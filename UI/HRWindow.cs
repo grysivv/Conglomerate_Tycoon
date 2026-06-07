@@ -35,6 +35,10 @@ namespace TycoonGame.UI
             engine = gameEngine;
             InitializeComponent();
             RefreshData();
+
+            // Enable Double Buffering to reduce repaint flickering
+            EnableDoubleBuffered(this);
+            EnableDoubleBuffered(employeeListView);
         }
 
         private void InitializeComponent()
@@ -347,6 +351,18 @@ namespace TycoonGame.UI
         {
             engine.TrainingBudgetPerHourPerEmployee = tkTraining.Value;
             lblTrainingVal.Text = $"${tkTraining.Value}.00 / hr";
+        }
+
+        private void EnableDoubleBuffered(Control control)
+        {
+            try
+            {
+                typeof(Control).GetProperty("DoubleBuffered", 
+                    System.Reflection.BindingFlags.NonPublic | 
+                    System.Reflection.BindingFlags.Instance)
+                    ?.SetValue(control, true);
+            }
+            catch { }
         }
     }
 }

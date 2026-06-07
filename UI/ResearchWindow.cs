@@ -27,6 +27,10 @@ namespace TycoonGame.UI
             refreshTimer.Start();
 
             FormClosed += (s, e) => refreshTimer.Stop();
+
+            // Enable Double Buffering to reduce repaint flickering
+            EnableDoubleBuffered(this);
+            EnableDoubleBuffered(flowNodes);
         }
 
         private void InitializeComponent()
@@ -158,7 +162,8 @@ namespace TycoonGame.UI
             {
                 Size = new Size(350, 140),
                 BackColor = Color.FromArgb(38, 42, 54),
-                Margin = new Padding(10)
+                Margin = new Padding(10),
+                Tag = node
             };
 
             // Title
@@ -208,6 +213,7 @@ namespace TycoonGame.UI
             // Progress bar panel
             Panel pnlProgress = new Panel
             {
+                Name = "pnlProgress",
                 Location = new Point(15, 85),
                 Size = new Size(200, 8),
                 BackColor = Color.FromArgb(48, 52, 64)
@@ -229,6 +235,7 @@ namespace TycoonGame.UI
             // Points indicator label
             Label lblPoints = new Label
             {
+                Name = "lblPoints",
                 Text = node.IsCompleted ? "Completed" : $"{node.PointsInvested:F0} / {node.ResearchPointCost:F0} RP",
                 Font = new Font("Segoe UI", 8F, FontStyle.Regular),
                 ForeColor = Color.FromArgb(140, 145, 160),
@@ -296,10 +303,85 @@ namespace TycoonGame.UI
                 double pct = engine.ActiveResearch.GetProgressPercentage();
                 lblActiveHeader.Text = $"Active Project: {engine.ActiveResearch.Name} ({(pct * 100):F0}%)";
 
-                // Fast refresh: redraw the panel controls if we've reached 100% or just to show progress
-                // Let's do a simple full refresh of the cards to avoid UI misalignments
-                RefreshTechTree();
+                if (engine.ActiveResearch.IsCompleted)
+                {
+                    // Full reload if completed to update unlock requirements and card colors
+                    RefreshTechTree();
+                }
+                else
+                {
+                    // Update the active research node card directly
+                    UpdateActiveCardProgress();
+                }
             }
+            else
+            {
+                lblActiveHeader.Text = "Active Project: Idle (Select a project card below)";
+            }
+        }
+
+        private void UpdateActiveCardProgress()
+        {
+            if (engine.ActiveResearch == null) return;
+
+            Panel? activeCard = null;
+            foreach (Control ctrl in flowNodes.Controls)
+            {
+                if (ctrl is Panel p && p.Tag == engine.ActiveResearch)
+                {
+                    activeCard = p;
+                    break;
+                }
+            }
+
+            if (activeCard == null) return;
+
+            Panel? pnlProgress = activeCard.Controls["pnlProgress"] as Panel;
+            Label? lblPoints = activeCard.Controls["lblPoints"] as Label;
+
+            if (pnlProgress != null && lblPoints != null)
+            {
+                double pct = engine.ActiveResearch.GetProgressPercentage();
+                int targetWidth = (int)(pnlProgress.Width * pct);
+
+                Panel? pnlFill = pnlProgress.Controls.Count > 0 ? pnlProgress.Controls[0] as Panel : null;
+                if (pnlFill == null && targetWidth > 0)
+                {
+                    pnlFill = new Panel
+                    {
+                        Location = new Point(0, 0),
+                        Size = new Size(targetWidth, 8),
+                        BackColor = Color.FromArgb(230, 140, 80)
+                    };
+                    pnlProgress.Controls.Add(pnlFill);
+                }
+                else if (pnlFill != null)
+                {
+                    if (pnlFill.Width != targetWidth)
+                    {
+                        pnlFill.Width = targetWidth;
+                    }
+                }
+
+                string newPointsText = $"{engine.ActiveResearch.PointsInvested:F0} / {engine.ActiveResearch.ResearchPointCost:F0} RP";
+                if (lblPoints.Text != newPointsText)
+                {
+                    lblPoints.Text = newPointsText;
+                }
+            }
+        }
+
+        private void EnableDoubleBuffered(Control? control)
+        {
+            if (control == null) return;
+            try
+            {
+                typeof(Control).GetProperty("DoubleBuffered", 
+                    System.Reflection.BindingFlags.NonPublic | 
+                    System.Reflection.BindingFlags.Instance)
+                    ?.SetValue(control, true);
+            }
+            catch { }
         }
     }
 }

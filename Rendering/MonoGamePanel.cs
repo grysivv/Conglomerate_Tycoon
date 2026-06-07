@@ -154,6 +154,23 @@ namespace TycoonGame.Rendering
             base.OnMouseDown(e);
             Focus();
 
+            // Intercept clicks on the top-down Mini Map (bottom-right corner)
+            int mapSizePx = GameEngine.MapSize;
+            int margin = 10;
+            int mapX = ClientSize.Width - mapSizePx - margin;
+            int mapY = ClientSize.Height - mapSizePx - margin;
+
+            if (e.Button == MouseButtons.Left && e.X >= mapX && e.X < mapX + mapSizePx && e.Y >= mapY && e.Y < mapY + mapSizePx)
+            {
+                int tx = e.X - mapX;
+                int ty = e.Y - mapY;
+                // Center camera on the clicked tile
+                Renderer.CameraX = (float)((tx - ty) * 64.0);
+                Renderer.CameraY = (float)((tx + ty) * 32.0);
+                Invalidate();
+                return;
+            }
+
             if (e.Button == MouseButtons.Right)
             {
                 isDragging = true;
@@ -175,6 +192,22 @@ namespace TycoonGame.Rendering
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
+
+            int mapSizePx = GameEngine.MapSize;
+            int margin = 10;
+            int mapX = ClientSize.Width - mapSizePx - margin;
+            int mapY = ClientSize.Height - mapSizePx - margin;
+
+            // Handle dragging on the mini-map to pan camera
+            if (e.Button == MouseButtons.Left && e.X >= mapX && e.X < mapX + mapSizePx && e.Y >= mapY && e.Y < mapY + mapSizePx)
+            {
+                int tx = e.X - mapX;
+                int ty = e.Y - mapY;
+                Renderer.CameraX = (float)((tx - ty) * 64.0);
+                Renderer.CameraY = (float)((tx + ty) * 32.0);
+                Invalidate();
+                return;
+            }
 
             // 1. Camera Panning (Right Mouse Drag)
             if (isDragging)

@@ -33,6 +33,11 @@ namespace TycoonGame.UI
             engine = gameEngine;
             InitializeComponent();
             RefreshLogisticsData();
+
+            // Enable Double Buffering to reduce repaint flickering
+            EnableDoubleBuffered(this);
+            EnableDoubleBuffered(factoryListView);
+            EnableDoubleBuffered(retailListView);
         }
 
         private void InitializeComponent()
@@ -178,6 +183,7 @@ namespace TycoonGame.UI
                 HeaderStyle = ColumnHeaderStyle.Nonclickable,
                 OwnerDraw = true
             };
+            EnableDoubleBuffered(competitorListView);
             competitorListView.Columns.Add("Competitor Name", 150);
             competitorListView.Columns.Add("Market Share", 100);
             competitorListView.Columns.Add("Avg Price", 100);
@@ -534,6 +540,18 @@ namespace TycoonGame.UI
             
             lblPriceIndex.Text = $"Retail Market Price: ${engine.CurrentMarketPrice:F2} / unit";
             lblMarketShare.Text = $"Player Market Share: {(engine.PlayerMarketShare * 100):F1}%";
+        }
+
+        private void EnableDoubleBuffered(Control control)
+        {
+            try
+            {
+                typeof(Control).GetProperty("DoubleBuffered", 
+                    System.Reflection.BindingFlags.NonPublic | 
+                    System.Reflection.BindingFlags.Instance)
+                    ?.SetValue(control, true);
+            }
+            catch { }
         }
     }
 }

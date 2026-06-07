@@ -65,6 +65,11 @@ namespace TycoonGame.Core
         public double AiNetIncome { get; set; }
         public double AiBookValue { get; set; }
 
+        // IPO and cashflow tracking
+        public bool IsIpoLaunched { get; set; }
+        public bool IsPubliclyTraded { get => IsIpoLaunched; set => IsIpoLaunched = value; }
+        public double PreviousMonthCashflow { get; set; }
+
         public CompanyStats()
         {
             Cash = 500000.0; // $500,000 cash starting capital
@@ -85,9 +90,11 @@ namespace TycoonGame.Core
 
             // Stock market initialization
             PlayerTotalShares = 1000000.0;
-            PlayerSharesOwnedByPlayer = 600000.0; // Player starts owning 60% of their company (600,000 shares)
-            PlayerSharesOwnedByAi = 0.0; // Competitors own 0% initially
-            PlayerStockPrice = 10.0; // Starting share price is $10.0
+            PlayerSharesOwnedByPlayer = 1000000.0; // Starts 100% private
+            PlayerSharesOwnedByAi = 0.0;
+            PlayerStockPrice = 10.0;
+            IsIpoLaunched = false;
+            PreviousMonthCashflow = 30000.0; // Default baseline starting monthly profit
 
             AiTotalShares = 1000000.0;
             AiSharesOwnedByPlayer = 0.0; // Player owns 0% of AI initially

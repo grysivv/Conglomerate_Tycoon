@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using TycoonGame.Core;
 using Color = Microsoft.Xna.Framework.Color;
+using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
 namespace TycoonGame.Rendering
 {
@@ -20,11 +21,13 @@ namespace TycoonGame.Rendering
         public float CameraY { get; set; }
         public float Zoom { get; set; }
 
+        private Texture2D pixelTexture;
+
         public IsometricRenderer()
         {
             buildingTextures = new Dictionary<TileType, Texture2D>();
-            CameraX = 1200f; // Center camera on the map initially
-            CameraY = 600f;
+            CameraX = 0f; // Center camera on the new map initially
+            CameraY = GameEngine.MapSize * 32f;
             Zoom = 1.0f;
         }
 
@@ -46,6 +49,10 @@ namespace TycoonGame.Rendering
             // Generate warning badges (16x16 icons)
             warningPowerTexture = CreateWarningBadge(device, Color.Red); // Power outage badge
             warningRoadTexture = CreateWarningBadge(device, Color.Orange); // Road disconnected badge
+
+            // Create solid 1x1 color pixel texture for mini-map rendering
+            pixelTexture = new Texture2D(device, 1, 1);
+            pixelTexture.SetData(new Color[] { Color.White });
         }
 
         private Texture2D CreateWarningBadge(GraphicsDevice device, Color color)
@@ -248,6 +255,66 @@ namespace TycoonGame.Rendering
                         0f);
                 }
             }
+
+            // 4. Draw Mini Map in the bottom right corner
+            DrawMiniMap(spriteBatch, engine, viewportWidth, viewportHeight);
+        }
+
+        public void DrawMiniMap(SpriteBatch spriteBatch, GameEngine engine, int viewportWidth, int viewportHeight)
+        {
+            int mapSizePx = GameEngine.MapSize; // 120 pixels for MapSize 120
+            int margin = 10;
+            int mapX = viewportWidth - mapSizePx - margin;
+            int mapY = viewportHeight - mapSizePx - margin;
+
+            // Draw border (2px thickness)
+            spriteBatch.Draw(pixelTexture, new Rectangle(mapX - 2, mapY - 2, mapSizePx + 4, mapSizePx + 4), new Color(48, 56, 70));
+            // Draw background
+            spriteBatch.Draw(pixelTexture, new Rectangle(mapX, mapY, mapSizePx, mapSizePx), new Color(20, 24, 30));
+
+            // Draw top-down grid representation
+            for (int y = 0; y < GameEngine.MapSize; y++)
+            {
+                for (int x = 0; x < GameEngine.MapSize; x++)
+                {
+                    Tile tile = engine.Grid[x, y];
+                    Color c = tile.Type switch
+                    {
+                        TileType.Grass => new Color(34, 139, 34),
+                        TileType.Road => new Color(105, 105, 105),
+                        TileType.Office => new Color(0, 191, 255),
+                        TileType.Factory => new Color(210, 105, 30),
+                        TileType.Retail => new Color(220, 20, 60),
+                        TileType.PowerPlant => new Color(255, 215, 0),
+                        TileType.Apartment => new Color(138, 43, 226),
+                        TileType.University => new Color(255, 20, 147),
+                        _ => new Color(34, 139, 34)
+                    };
+
+                    spriteBatch.Draw(pixelTexture, new Rectangle(mapX + x, mapY + y, 1, 1), c);
+                }
+            }
+
+            // Draw camera visible area rectangle on mini-map
+            Tuple<int, int> centerTile = ScreenToTile(viewportWidth / 2, viewportHeight / 2, viewportWidth, viewportHeight);
+            int cx = Math.Clamp(centerTile.Item1, 0, GameEngine.MapSize - 1);
+            int cy = Math.Clamp(centerTile.Item2, 0, GameEngine.MapSize - 1);
+
+            int viewSize = (int)(16 / Zoom); // width of visible tiles region (scales with zoom)
+            if (viewSize < 4) viewSize = 4;
+            int rx = cx - viewSize / 2;
+            int ry = cy - viewSize / 2;
+
+            Rectangle viewRect = new Rectangle(mapX + rx, mapY + ry, viewSize, viewSize);
+            DrawHollowRect(spriteBatch, viewRect, Color.White);
+        }
+
+        private void DrawHollowRect(SpriteBatch spriteBatch, Rectangle rect, Color color)
+        {
+            spriteBatch.Draw(pixelTexture, new Rectangle(rect.X, rect.Y, rect.Width, 1), color);
+            spriteBatch.Draw(pixelTexture, new Rectangle(rect.X, rect.Y + rect.Height - 1, rect.Width, 1), color);
+            spriteBatch.Draw(pixelTexture, new Rectangle(rect.X, rect.Y, 1, rect.Height), color);
+            spriteBatch.Draw(pixelTexture, new Rectangle(rect.X + rect.Width - 1, rect.Y, 1, rect.Height), color);
         }
     }
 }

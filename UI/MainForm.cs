@@ -17,12 +17,16 @@ namespace TycoonGame.UI
         private Timer simulationTimer;
         private int currentSpeedMultiplier = 1; // 0 = Pause, 1 = 1x, 2 = 2x, 3 = 5x
         private DateTime lastUpdateTime;
+        private double uiUpdateAccumulator = 0.0;
+        private Tuple<int, int>? lastSelectedTileCoords = null;
         
         // Sidebar controls
         private Label lblSelectedTileCoords;
         private Label lblSelectedTileType;
         private Label lblSelectedTileLevel;
         private Label lblSelectedTileMaint;
+        private Label lblSelectedTileLandValue;
+        private Label lblSelectedTileTraffic;
         private Label lblSelectedTilePower;
         private Label lblSelectedTileRoad;
         private Label lblSelectedTileInventory;
@@ -34,15 +38,20 @@ namespace TycoonGame.UI
         private Button btnUnassignEmployee;
         private Button btnUpgradeBuilding;
 
+        // Top Bar controls
+        private Label lblTopCash;
+        private Label lblTopCashflow;
+        private Label lblTopStockValue;
+        private Button btnTopLaunchIpo;
+        private Label lblTopDate;
+
         // Bottom Bar controls
-        private Label lblBottomCash;
-        private Label lblBottomDate;
         private Label lblBottomShare;
         private Label lblBottomResearch;
         private Panel pnlBottomResearchBar;
         private Panel pnlBottomResearchFill;
         
-        // Buttons
+        // Speed Buttons
         private Button btnPause;
         private Button btnSpeed1x;
         private Button btnSpeed2x;
@@ -83,14 +92,125 @@ namespace TycoonGame.UI
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
-                RowCount = 2,
+                RowCount = 3,
                 BackColor = Color.FromArgb(24, 28, 36)
             };
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 78F)); // MonoGame Panel
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22F)); // Sidebar Control Panel
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 90F)); // Game Grid area
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 10F)); // Bottom Stats Bar
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F)); // Top Bar
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Middle (Game + Sidebar)
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 55F)); // Bottom Bar
             Controls.Add(mainLayout);
+
+            // 0. Top Bar Panel Setup
+            TableLayoutPanel pnlTop = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                BackColor = Color.FromArgb(32, 38, 48),
+                Padding = new Padding(10, 5, 10, 5)
+            };
+            pnlTop.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F)); // Left aligned group
+            pnlTop.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F)); // Right aligned group
+            mainLayout.Controls.Add(pnlTop, 0, 0);
+            mainLayout.SetColumnSpan(pnlTop, 2);
+
+            // Top Bar LEFT Flow Group
+            FlowLayoutPanel pnlTopLeft = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Margin = new Padding(0),
+                Padding = new Padding(0, 5, 0, 0)
+            };
+
+            lblTopCash = new Label
+            {
+                Text = "Cash Reserves: $500,000.00",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(100, 240, 140),
+                AutoSize = true,
+                Margin = new Padding(0, 0, 20, 0)
+            };
+            pnlTopLeft.Controls.Add(lblTopCash);
+
+            lblTopCashflow = new Label
+            {
+                Text = "Monthly Cashflow: +$30,000.00",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(140, 200, 250),
+                AutoSize = true,
+                Margin = new Padding(0, 0, 20, 0)
+            };
+            pnlTopLeft.Controls.Add(lblTopCashflow);
+
+            lblTopStockValue = new Label
+            {
+                Text = "Player Stock Value: #N/A",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(170, 175, 190),
+                AutoSize = true,
+                Margin = new Padding(0, 0, 10, 0)
+            };
+            pnlTopLeft.Controls.Add(lblTopStockValue);
+
+            btnTopLaunchIpo = new Button
+            {
+                Text = "Launch IPO",
+                Size = new Size(90, 24),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(80, 200, 120),
+                ForeColor = Color.White,
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                Margin = new Padding(0)
+            };
+            btnTopLaunchIpo.FlatAppearance.BorderSize = 0;
+            btnTopLaunchIpo.Click += BtnTopLaunchIpo_Click;
+            pnlTopLeft.Controls.Add(btnTopLaunchIpo);
+
+            pnlTop.Controls.Add(pnlTopLeft, 0, 0);
+
+            // Top Bar RIGHT Flow Group
+            FlowLayoutPanel pnlTopRight = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Right,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Margin = new Padding(0),
+                Padding = new Padding(0, 3, 0, 0),
+                AutoSize = true
+            };
+
+            lblTopDate = new Label
+            {
+                Text = "06 June 2026",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.White,
+                AutoSize = true,
+                Margin = new Padding(0, 5, 20, 0),
+                TextAlign = ContentAlignment.MiddleRight
+            };
+            pnlTopRight.Controls.Add(lblTopDate);
+
+            btnPause = CreateSpeedButton("||", 0);
+            btnSpeed1x = CreateSpeedButton("1x", 1);
+            btnSpeed2x = CreateSpeedButton("2x", 2);
+            btnSpeed5x = CreateSpeedButton("5x", 3);
+
+            btnPause.Size = new Size(32, 26);
+            btnSpeed1x.Size = new Size(32, 26);
+            btnSpeed2x.Size = new Size(32, 26);
+            btnSpeed5x.Size = new Size(32, 26);
+
+            pnlTopRight.Controls.Add(btnPause);
+            pnlTopRight.Controls.Add(btnSpeed1x);
+            pnlTopRight.Controls.Add(btnSpeed2x);
+            pnlTopRight.Controls.Add(btnSpeed5x);
+
+            pnlTop.Controls.Add(pnlTopRight, 1, 0);
 
             // 1. MonoGame Panel Setup
             gamePanel = new MonoGamePanel
@@ -100,8 +220,8 @@ namespace TycoonGame.UI
                 Margin = new Padding(5)
             };
             gamePanel.TileSelected += GamePanel_TileSelected;
-            gamePanel.MapChanged += (s, e) => UpdateSidebar(gamePanel.SelectedTile);
-            mainLayout.Controls.Add(gamePanel, 0, 0);
+            gamePanel.MapChanged += (s, e) => UpdateSidebar(gamePanel.SelectedTile, forceRepopulate: true);
+            mainLayout.Controls.Add(gamePanel, 0, 1);
 
             // 2. Sidebar Control Panel
             FlowLayoutPanel pnlSidebar = new FlowLayoutPanel
@@ -113,28 +233,7 @@ namespace TycoonGame.UI
                 Padding = new Padding(10),
                 AutoScroll = true
             };
-            mainLayout.Controls.Add(pnlSidebar, 1, 0);
-
-            // Sidebar: Control Tickers
-            Label lblControlsTitle = new Label { Text = "Simulation Controls", Font = new Font("Segoe UI", 10F, FontStyle.Bold), ForeColor = Color.FromArgb(80, 140, 200), Size = new Size(220, 20), Margin = new Padding(0, 5, 0, 2) };
-            pnlSidebar.Controls.Add(lblControlsTitle);
-
-            // Simulation Speed panel
-            FlowLayoutPanel pnlSpeed = new FlowLayoutPanel { Size = new Size(220, 38), FlowDirection = FlowDirection.LeftToRight };
-            btnPause = CreateSpeedButton("||", 0);
-            btnSpeed1x = CreateSpeedButton("1x", 1);
-            btnSpeed2x = CreateSpeedButton("2x", 2);
-            btnSpeed5x = CreateSpeedButton("5x", 3);
-            
-            pnlSpeed.Controls.Add(btnPause);
-            pnlSpeed.Controls.Add(btnSpeed1x);
-            pnlSpeed.Controls.Add(btnSpeed2x);
-            pnlSpeed.Controls.Add(btnSpeed5x);
-            pnlSidebar.Controls.Add(pnlSpeed);
-            UpdateSpeedButtonColors();
-
-            // Divider
-            pnlSidebar.Controls.Add(new Label { Size = new Size(220, 1), BorderStyle = BorderStyle.FixedSingle, Margin = new Padding(0, 5, 0, 5) });
+            mainLayout.Controls.Add(pnlSidebar, 1, 1);
 
             // Build Toolbox
             Label lblBuildTitle = new Label { Text = "Construction Toolbelt", Font = new Font("Segoe UI", 10F, FontStyle.Bold), ForeColor = Color.FromArgb(80, 140, 200), Size = new Size(220, 20), Margin = new Padding(0, 5, 0, 5) };
@@ -148,6 +247,8 @@ namespace TycoonGame.UI
                 BuildTool.BuildFactory, 
                 BuildTool.BuildRetail, 
                 BuildTool.BuildPowerPlant, 
+                BuildTool.BuildApartment,
+                BuildTool.BuildUniversity,
                 BuildTool.Bulldozer 
             };
             
@@ -159,6 +260,8 @@ namespace TycoonGame.UI
                 "Industrial Factory ($60K)", 
                 "Retail Outlet ($40K)", 
                 "Power Plant ($50K)", 
+                "Residential Apartment ($50K)",
+                "Collegiate University ($80K)",
                 "Heavy Bulldozer ($1K)" 
             };
 
@@ -193,6 +296,8 @@ namespace TycoonGame.UI
             lblSelectedTileType = new Label { Text = "Structure Type: Grass", Size = new Size(220, 18), ForeColor = Color.White };
             lblSelectedTileLevel = new Label { Text = "Structure Level: 0", Size = new Size(220, 18), ForeColor = Color.White };
             lblSelectedTileMaint = new Label { Text = "Hourly Upkeep: $0.00", Size = new Size(220, 18), ForeColor = Color.White };
+            lblSelectedTileLandValue = new Label { Text = "Local Land Value: $0.00", Size = new Size(220, 18), ForeColor = Color.White };
+            lblSelectedTileTraffic = new Label { Text = "Foot Traffic Index: 0", Size = new Size(220, 18), ForeColor = Color.White };
             lblSelectedTilePower = new Label { Text = "Grid Electricity: Offline", Size = new Size(220, 18), ForeColor = Color.White };
             lblSelectedTileRoad = new Label { Text = "Road Accessibility: No", Size = new Size(220, 18), ForeColor = Color.White };
             lblSelectedTileInventory = new Label { Text = "Inventory Stocks: 0 / 0", Size = new Size(220, 18), ForeColor = Color.White };
@@ -202,6 +307,8 @@ namespace TycoonGame.UI
             pnlSidebar.Controls.Add(lblSelectedTileType);
             pnlSidebar.Controls.Add(lblSelectedTileLevel);
             pnlSidebar.Controls.Add(lblSelectedTileMaint);
+            pnlSidebar.Controls.Add(lblSelectedTileLandValue);
+            pnlSidebar.Controls.Add(lblSelectedTileTraffic);
             pnlSidebar.Controls.Add(lblSelectedTilePower);
             pnlSidebar.Controls.Add(lblSelectedTileRoad);
             pnlSidebar.Controls.Add(lblSelectedTileInventory);
@@ -280,42 +387,18 @@ namespace TycoonGame.UI
             TableLayoutPanel pnlBottom = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 5,
+                ColumnCount = 3,
                 RowCount = 1,
                 BackColor = Color.FromArgb(32, 38, 48),
                 Padding = new Padding(10, 5, 10, 5)
             };
-            pnlBottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 18F)); // Capital info
-            pnlBottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15F)); // Time info
-            pnlBottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22F)); // Macro info (increased size slightly)
-            pnlBottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F)); // Active Research info
-            pnlBottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F)); // Executive buttons
-            mainLayout.Controls.Add(pnlBottom, 0, 1);
+            pnlBottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F)); // Macro info
+            pnlBottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F)); // Active Research info
+            pnlBottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34F)); // Executive buttons
+            mainLayout.Controls.Add(pnlBottom, 0, 2);
             mainLayout.SetColumnSpan(pnlBottom, 2);
 
-            // Bottom Column 1: Financial status
-            lblBottomCash = new Label
-            {
-                Text = "Cash Reserves:\n$500,000.00",
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(100, 240, 140),
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            pnlBottom.Controls.Add(lblBottomCash, 0, 0);
-
-            // Bottom Column 2: Date clock
-            lblBottomDate = new Label
-            {
-                Text = "Calendar Date:\n06/06/2026 08:00",
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
-                ForeColor = Color.White,
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            pnlBottom.Controls.Add(lblBottomDate, 1, 0);
-
-            // Bottom Column 3: Macroeconomic indices
+            // Bottom Column 0: Macroeconomic Climate
             lblBottomShare = new Label
             {
                 Text = "Macro Climate:\nGDP: 100.0 (Recovery)\nInt: 5.0% / CCI: 1.00",
@@ -324,9 +407,9 @@ namespace TycoonGame.UI
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft
             };
-            pnlBottom.Controls.Add(lblBottomShare, 2, 0);
+            pnlBottom.Controls.Add(lblBottomShare, 0, 0);
 
-            // Bottom Column 4: R&D Tech Ticker
+            // Bottom Column 1: R&D Tech Ticker
             FlowLayoutPanel pnlResearchTally = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -358,9 +441,9 @@ namespace TycoonGame.UI
             };
             pnlBottomResearchBar.Controls.Add(pnlBottomResearchFill);
             pnlResearchTally.Controls.Add(pnlBottomResearchBar);
-            pnlBottom.Controls.Add(pnlResearchTally, 3, 0);
+            pnlBottom.Controls.Add(pnlResearchTally, 1, 0);
 
-            // Bottom Column 5: Executive windows buttons
+            // Bottom Column 2: Executive windows buttons
             FlowLayoutPanel pnlButtons = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -368,16 +451,44 @@ namespace TycoonGame.UI
                 Padding = new Padding(0, 5, 0, 0)
             };
             
-            Button btnHR = CreateExecutiveButton("Staff", (s, e) => new HRWindow(engine).ShowDialog(this));
-            Button btnRD = CreateExecutiveButton("R&D", (s, e) => new ResearchWindow(engine).ShowDialog(this));
-            Button btnLogistics = CreateExecutiveButton("Logistics", (s, e) => new LogisticsWindow(engine).ShowDialog(this));
-            Button btnFinance = CreateExecutiveButton("Finance", (s, e) => new AnalyticsWindow(engine).ShowDialog(this));
+            Button btnHR = CreateExecutiveButton("Staff", (s, e) => {
+                new HRWindow(engine).ShowDialog(this);
+                UpdateSidebar(gamePanel.SelectedTile, forceRepopulate: true);
+                UpdateBottomBar();
+            });
+            Button btnRD = CreateExecutiveButton("R&D", (s, e) => {
+                new ResearchWindow(engine).ShowDialog(this);
+                UpdateSidebar(gamePanel.SelectedTile, forceRepopulate: true);
+                UpdateBottomBar();
+            });
+            Button btnLogistics = CreateExecutiveButton("Logistics", (s, e) => {
+                new LogisticsWindow(engine).ShowDialog(this);
+                UpdateSidebar(gamePanel.SelectedTile, forceRepopulate: true);
+                UpdateBottomBar();
+            });
+            Button btnFinance = CreateExecutiveButton("Finance", (s, e) => {
+                new AnalyticsWindow(engine).ShowDialog(this);
+                UpdateSidebar(gamePanel.SelectedTile, forceRepopulate: true);
+                UpdateBottomBar();
+            });
 
             pnlButtons.Controls.Add(btnHR);
             pnlButtons.Controls.Add(btnRD);
             pnlButtons.Controls.Add(btnLogistics);
             pnlButtons.Controls.Add(btnFinance);
-            pnlBottom.Controls.Add(pnlButtons, 4, 0);
+            pnlBottom.Controls.Add(pnlButtons, 2, 0);
+
+            // Enable Double Buffering to reduce repaint flickering
+            EnableDoubleBuffered(this);
+            EnableDoubleBuffered(mainLayout);
+            EnableDoubleBuffered(pnlSidebar);
+            EnableDoubleBuffered(pnlBottom);
+            EnableDoubleBuffered(pnlResearchTally);
+            EnableDoubleBuffered(pnlButtons);
+            EnableDoubleBuffered(pnlBottomResearchBar);
+            EnableDoubleBuffered(pnlTop);
+            EnableDoubleBuffered(pnlTopLeft);
+            EnableDoubleBuffered(pnlTopRight);
         }
 
         private Button CreateSpeedButton(string txt, int speedVal)
@@ -465,22 +576,92 @@ namespace TycoonGame.UI
             // Redraw game grid
             gamePanel.Invalidate();
             
-            // Sync bottom stats and sidebar
-            UpdateBottomBar();
-            UpdateSidebar(gamePanel.SelectedTile);
+            // Decouple and throttle textual UI updates to 10 FPS (100ms) to prevent flickering
+            uiUpdateAccumulator += dt;
+            if (uiUpdateAccumulator >= 0.1)
+            {
+                UpdateBottomBar();
+                UpdateSidebar(gamePanel.SelectedTile, forceRepopulate: false);
+                uiUpdateAccumulator = 0.0;
+            }
+        }
+
+        private void SetLabelText(Label label, string newText)
+        {
+            if (label.Text != newText)
+            {
+                label.Text = newText;
+            }
+        }
+
+        private void SetLabelForeColor(Label label, Color newColor)
+        {
+            if (label.ForeColor != newColor)
+            {
+                label.ForeColor = newColor;
+            }
+        }
+
+        private void SetControlVisible(Control control, bool visible)
+        {
+            if (control.Visible != visible)
+            {
+                control.Visible = visible;
+            }
+        }
+
+        private void SetControlEnabled(Control control, bool enabled)
+        {
+            if (control.Enabled != enabled)
+            {
+                control.Enabled = enabled;
+            }
+        }
+
+        private void EnableDoubleBuffered(Control control)
+        {
+            try
+            {
+                typeof(Control).GetProperty("DoubleBuffered", 
+                     System.Reflection.BindingFlags.NonPublic | 
+                     System.Reflection.BindingFlags.Instance)
+                    ?.SetValue(control, true);
+            }
+            catch { }
         }
 
         private void UpdateBottomBar()
         {
-            lblBottomCash.Text = $"Cash Reserves:\n${engine.Stats.Cash:N2}";
-            lblBottomCash.ForeColor = engine.Stats.Cash < 0 ? Color.FromArgb(240, 100, 100) : Color.FromArgb(100, 240, 140);
-            
-            lblBottomDate.Text = $"Calendar Date:\n{engine.CurrentDate:MM/dd/yyyy HH:mm}";
+            // Update Top Bar
+            SetLabelText(lblTopCash, $"Cash Reserves: ${engine.Stats.Cash:N2}");
+            SetLabelForeColor(lblTopCash, engine.Stats.Cash < 0 ? Color.FromArgb(240, 100, 100) : Color.FromArgb(100, 240, 140));
+
+            double cf = engine.Stats.PreviousMonthCashflow;
+            SetLabelText(lblTopCashflow, $"Monthly Cashflow: {(cf >= 0 ? "+" : "")}${cf:N2}");
+            SetLabelForeColor(lblTopCashflow, cf < 0 ? Color.FromArgb(240, 100, 100) : Color.FromArgb(140, 200, 250));
+
+            if (engine.Stats.IsPubliclyTraded)
+            {
+                SetLabelText(lblTopStockValue, $"Player Stock Value: ${engine.Stats.PlayerStockPrice:F2}");
+                SetLabelForeColor(lblTopStockValue, Color.FromArgb(100, 240, 140));
+                SetControlVisible(btnTopLaunchIpo, false);
+            }
+            else
+            {
+                SetLabelText(lblTopStockValue, "Player Stock Value: #N/A");
+                SetLabelForeColor(lblTopStockValue, Color.FromArgb(170, 175, 190));
+                SetControlVisible(btnTopLaunchIpo, true);
+            }
+
+            // Update Top Bar Date - formatted as DD Month YYYY (e.g. 07 June 2026)
+            string formattedDate = engine.CurrentDate.ToString("dd MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            SetLabelText(lblTopDate, formattedDate);
 
             // Dynamically show the cycle phase and key macro indicators
             string phaseStr = engine.CyclePhase.ToString();
-            lblBottomShare.Text = $"Macro: GDP {engine.GDP_Index:F1} ({phaseStr})\nInt: {engine.Interest_Rate * 100:F1}% / CCI: {engine.ConsumerConfidenceIndex:F2}";
-            lblBottomShare.ForeColor = engine.CyclePhase switch
+            SetLabelText(lblBottomShare, $"Macro: GDP {engine.GDP_Index:F1} ({phaseStr})\nInt: {engine.Interest_Rate * 100:F1}% / CCI: {engine.ConsumerConfidenceIndex:F2}");
+            
+            Color phaseColor = engine.CyclePhase switch
             {
                 CyclePhase.Boom => Color.FromArgb(100, 240, 140),
                 CyclePhase.Recovery => Color.FromArgb(140, 200, 250),
@@ -488,43 +669,75 @@ namespace TycoonGame.UI
                 CyclePhase.Recession => Color.FromArgb(240, 100, 100),
                 _ => Color.White
             };
+            SetLabelForeColor(lblBottomShare, phaseColor);
 
             if (engine.ActiveResearch != null)
             {
                 double progress = engine.ActiveResearch.GetProgressPercentage();
-                lblBottomResearch.Text = $"Research: {engine.ActiveResearch.Name} ({(progress * 100):F0}%)";
-                pnlBottomResearchFill.Width = (int)(pnlBottomResearchBar.Width * progress);
+                SetLabelText(lblBottomResearch, $"Research: {engine.ActiveResearch.Name} ({(progress * 100):F0}%)");
+                int newWidth = (int)(pnlBottomResearchBar.Width * progress);
+                if (pnlBottomResearchFill.Width != newWidth)
+                {
+                    pnlBottomResearchFill.Width = newWidth;
+                }
             }
             else
             {
-                lblBottomResearch.Text = "Research: Idle";
-                pnlBottomResearchFill.Width = 0;
+                SetLabelText(lblBottomResearch, "Research: Idle");
+                if (pnlBottomResearchFill.Width != 0)
+                {
+                    pnlBottomResearchFill.Width = 0;
+                }
             }
         }
 
         private void GamePanel_TileSelected(object? sender, Tuple<int, int>? tileCoords)
         {
-            UpdateSidebar(tileCoords);
+            UpdateSidebar(tileCoords, forceRepopulate: true);
         }
 
-        private void UpdateSidebar(Tuple<int, int>? tileCoords)
+        private void UpdateSidebar(Tuple<int, int>? tileCoords, bool forceRepopulate = false)
         {
+            bool selectionChanged = false;
+            if (tileCoords == null && lastSelectedTileCoords != null)
+            {
+                selectionChanged = true;
+                lastSelectedTileCoords = null;
+            }
+            else if (tileCoords != null && (lastSelectedTileCoords == null || 
+                                           lastSelectedTileCoords.Item1 != tileCoords.Item1 || 
+                                           lastSelectedTileCoords.Item2 != tileCoords.Item2))
+            {
+                selectionChanged = true;
+                lastSelectedTileCoords = tileCoords;
+            }
+
+            bool repopulate = forceRepopulate || selectionChanged;
+
             if (tileCoords == null)
             {
-                lblSelectedTileCoords.Text = "Grid Address: None";
-                lblSelectedTileType.Text = "Structure Type: Grass";
-                lblSelectedTileLevel.Text = "Structure Level: 0";
-                lblSelectedTileMaint.Text = "Hourly Upkeep: $0.00";
-                lblSelectedTilePower.Text = "Grid Electricity: Offline";
-                lblSelectedTileRoad.Text = "Road Accessibility: No";
-                lblSelectedTileInventory.Text = "Inventory Stocks: 0 / 0";
-                lblSelectedTileStaff.Text = "Employees Assigned: 0 / 0";
+                SetLabelText(lblSelectedTileCoords, "Grid Address: None");
+                SetLabelText(lblSelectedTileType, "Structure Type: Grass");
+                SetLabelText(lblSelectedTileLevel, "Structure Level: 0");
+                SetLabelText(lblSelectedTileMaint, "Hourly Upkeep: $0.00");
+                SetLabelText(lblSelectedTileLandValue, "Local Land Value: $0.00");
+                SetLabelText(lblSelectedTileTraffic, "Foot Traffic Index: 0");
+                SetLabelText(lblSelectedTilePower, "Grid Electricity: Offline");
+                SetLabelForeColor(lblSelectedTilePower, Color.White);
+                SetLabelText(lblSelectedTileRoad, "Road Accessibility: No");
+                SetLabelForeColor(lblSelectedTileRoad, Color.White);
+                SetLabelText(lblSelectedTileInventory, "Inventory Stocks: 0 / 0");
+                SetLabelText(lblSelectedTileStaff, "Employees Assigned: 0 / 0");
                 
-                btnUpgradeBuilding.Visible = false;
-                lstAssignedEmployees.Items.Clear();
-                cmbUnassignedEmployees.Items.Clear();
-                btnAssignEmployee.Enabled = false;
-                btnUnassignEmployee.Enabled = false;
+                SetControlVisible(btnUpgradeBuilding, false);
+                SetControlEnabled(btnAssignEmployee, false);
+                SetControlEnabled(btnUnassignEmployee, false);
+
+                if (repopulate)
+                {
+                    lstAssignedEmployees.Items.Clear();
+                    cmbUnassignedEmployees.Items.Clear();
+                }
                 return;
             }
 
@@ -532,30 +745,42 @@ namespace TycoonGame.UI
             int ty = tileCoords.Item2;
             Tile tile = engine.Grid[tx, ty];
 
-            lblSelectedTileCoords.Text = $"Grid Address: [{tx}, {ty}]";
-            lblSelectedTileType.Text = $"Structure Type: {tile.Type}";
-            lblSelectedTileLevel.Text = $"Structure Level: {tile.Level}";
-            lblSelectedTileMaint.Text = $"Hourly Upkeep: ${tile.MaintenanceCost:F2}";
+            SetLabelText(lblSelectedTileCoords, $"Grid Address: [{tx}, {ty}]");
+            SetLabelText(lblSelectedTileType, $"Structure Type: {tile.Type}");
+            SetLabelText(lblSelectedTileLevel, $"Structure Level: {tile.Level}");
+            SetLabelText(lblSelectedTileMaint, $"Hourly Upkeep: ${tile.MaintenanceCost:F2}");
+            SetLabelText(lblSelectedTileLandValue, $"Local Land Value: ${tile.LandValue:N2}");
+            SetLabelText(lblSelectedTileTraffic, $"Foot Traffic Index: {tile.TrafficIndex:F0}");
             
-            lblSelectedTilePower.Text = tile.IsPowered ? "Grid Electricity: Powered" : "Grid Electricity: Offline";
-            lblSelectedTilePower.ForeColor = tile.IsPowered ? Color.FromArgb(100, 240, 140) : Color.FromArgb(240, 100, 100);
+            SetLabelText(lblSelectedTilePower, tile.IsPowered ? "Grid Electricity: Powered" : "Grid Electricity: Offline");
+            SetLabelForeColor(lblSelectedTilePower, tile.IsPowered ? Color.FromArgb(100, 240, 140) : Color.FromArgb(240, 100, 100));
 
-            lblSelectedTileRoad.Text = tile.HasRoadAccess ? "Road Accessibility: Active" : "Road Accessibility: No";
-            lblSelectedTileRoad.ForeColor = tile.HasRoadAccess ? Color.FromArgb(100, 240, 140) : Color.FromArgb(240, 100, 100);
+            SetLabelText(lblSelectedTileRoad, tile.HasRoadAccess ? "Road Accessibility: Active" : "Road Accessibility: No");
+            SetLabelForeColor(lblSelectedTileRoad, tile.HasRoadAccess ? Color.FromArgb(100, 240, 140) : Color.FromArgb(240, 100, 100));
 
             if (tile.Type == TileType.Factory || tile.Type == TileType.Retail)
             {
-                lblSelectedTileInventory.Text = $"Inventory Stocks: {tile.Inventory:F0} / {tile.MaxInventory:F0}";
+                SetLabelText(lblSelectedTileInventory, $"Inventory Stocks: {tile.Inventory:F0} / {tile.MaxInventory:F0}");
+            }
+            else if (tile.Type == TileType.Apartment)
+            {
+                SetLabelText(lblSelectedTileInventory, $"Occupant Tenants: {tile.Inventory:F0} / {tile.MaxInventory:F0}");
+            }
+            else if (tile.Type == TileType.University)
+            {
+                SetLabelText(lblSelectedTileInventory, $"Training Progress: {tile.Inventory:F0}% / 100%");
             }
             else
             {
-                lblSelectedTileInventory.Text = "Inventory Stocks: N/A";
+                SetLabelText(lblSelectedTileInventory, "Inventory Stocks: N/A");
             }
 
-            if (tile.Type != TileType.Grass && tile.Type != TileType.Road)
+            bool isBuilding = tile.Type != TileType.Grass && tile.Type != TileType.Road;
+
+            if (isBuilding)
             {
-                lblSelectedTileStaff.Text = $"Employees Assigned: {tile.EmployeeCount} / {tile.MaxEmployees}";
-                btnUpgradeBuilding.Visible = tile.Level < 3;
+                SetLabelText(lblSelectedTileStaff, $"Employees Assigned: {tile.EmployeeCount} / {tile.MaxEmployees}");
+                SetControlVisible(btnUpgradeBuilding, tile.Level < 3);
                 
                 double upgradeCost = tile.Type switch
                 {
@@ -563,55 +788,64 @@ namespace TycoonGame.UI
                     TileType.Factory => 48000.0,
                     TileType.Retail => 32000.0,
                     TileType.PowerPlant => 40000.0,
+                    TileType.Apartment => 40000.0,
+                    TileType.University => 60000.0,
                     _ => 0
                 };
-                btnUpgradeBuilding.Text = $"Upgrade Block (${upgradeCost / 1000:F0}K)";
+                string upgradeText = $"Upgrade Block (${upgradeCost / 1000:F0}K)";
+                if (btnUpgradeBuilding.Text != upgradeText)
+                {
+                    btnUpgradeBuilding.Text = upgradeText;
+                }
             }
             else
             {
-                lblSelectedTileStaff.Text = "Employees Assigned: N/A";
-                btnUpgradeBuilding.Visible = false;
+                SetLabelText(lblSelectedTileStaff, "Employees Assigned: N/A");
+                SetControlVisible(btnUpgradeBuilding, false);
             }
 
-            // Populate assigned employees list
-            lstAssignedEmployees.Items.Clear();
-            var assigned = engine.Employees.Where(e => e.AssignedX == tx && e.AssignedY == ty).ToList();
-            foreach (var emp in assigned)
+            if (repopulate)
             {
-                lstAssignedEmployees.Items.Add($"{emp.Name} ({emp.Role})");
-            }
-            btnUnassignEmployee.Enabled = lstAssignedEmployees.Items.Count > 0;
+                // Populate assigned employees list
+                lstAssignedEmployees.Items.Clear();
+                var assigned = engine.Employees.Where(e => e.AssignedX == tx && e.AssignedY == ty).ToList();
+                foreach (var emp in assigned)
+                {
+                    lstAssignedEmployees.Items.Add($"{emp.Name} ({emp.Role})");
+                }
 
-            // Populate unassigned employee combobox based on building worker requirements
-            cmbUnassignedEmployees.Items.Clear();
-            var unassigned = engine.Employees.Where(e => e.AssignedX == -1).ToList();
+                // Populate unassigned employee combobox based on building worker requirements
+                cmbUnassignedEmployees.Items.Clear();
+                var unassigned = engine.Employees.Where(e => e.AssignedX == -1).ToList();
 
-            // Filter available workers by appropriate role
-            // PowerPlant only takes Workers or Managers, etc.
-            if (tile.Type == TileType.PowerPlant)
-            {
-                unassigned = unassigned.Where(e => e.Role == EmployeeRole.Worker || e.Role == EmployeeRole.Manager).ToList();
-            }
-            else if (tile.Type == TileType.Office)
-            {
-                // Offices accept any employee type
-            }
-            else if (tile.Type == TileType.Factory)
-            {
-                unassigned = unassigned.Where(e => e.Role == EmployeeRole.Worker || e.Role == EmployeeRole.Manager).ToList();
-            }
-            else if (tile.Type == TileType.Retail)
-            {
-                unassigned = unassigned.Where(e => e.Role == EmployeeRole.Worker || e.Role == EmployeeRole.Manager).ToList();
+                // Filter available workers by appropriate role
+                if (tile.Type == TileType.PowerPlant)
+                {
+                    unassigned = unassigned.Where(e => e.Role == EmployeeRole.Worker || e.Role == EmployeeRole.Manager).ToList();
+                }
+                else if (tile.Type == TileType.Office)
+                {
+                    // Offices accept any employee type
+                }
+                else if (tile.Type == TileType.Factory)
+                {
+                    unassigned = unassigned.Where(e => e.Role == EmployeeRole.Worker || e.Role == EmployeeRole.Manager).ToList();
+                }
+                else if (tile.Type == TileType.Retail)
+                {
+                    unassigned = unassigned.Where(e => e.Role == EmployeeRole.Worker || e.Role == EmployeeRole.Manager).ToList();
+                }
+
+                foreach (var emp in unassigned)
+                {
+                    cmbUnassignedEmployees.Items.Add(new ComboBoxEmployeeItem(emp));
+                }
             }
 
-            foreach (var emp in unassigned)
-            {
-                cmbUnassignedEmployees.Items.Add(new ComboBoxEmployeeItem(emp));
-            }
-
+            SetControlEnabled(btnUnassignEmployee, lstAssignedEmployees.Items.Count > 0);
+            
             bool spaceAvailable = tile.EmployeeCount < tile.MaxEmployees;
-            btnAssignEmployee.Enabled = spaceAvailable && cmbUnassignedEmployees.Items.Count > 0 && tile.Type != TileType.Grass && tile.Type != TileType.Road;
+            SetControlEnabled(btnAssignEmployee, spaceAvailable && cmbUnassignedEmployees.Items.Count > 0 && isBuilding);
         }
 
         private void BtnAssignEmployee_Click(object? sender, EventArgs e)
@@ -621,7 +855,7 @@ namespace TycoonGame.UI
             
             if (engine.AssignEmployee(item.Emp.Id, gamePanel.SelectedTile.Item1, gamePanel.SelectedTile.Item2))
             {
-                UpdateSidebar(gamePanel.SelectedTile);
+                UpdateSidebar(gamePanel.SelectedTile, forceRepopulate: true);
                 gamePanel.Invalidate();
             }
         }
@@ -635,7 +869,7 @@ namespace TycoonGame.UI
             if (idx >= 0 && idx < assigned.Count)
             {
                 engine.UnassignEmployee(assigned[idx].Id);
-                UpdateSidebar(gamePanel.SelectedTile);
+                UpdateSidebar(gamePanel.SelectedTile, forceRepopulate: true);
                 gamePanel.Invalidate();
             }
         }
@@ -648,7 +882,7 @@ namespace TycoonGame.UI
 
             if (engine.UpgradeStructure(tx, ty))
             {
-                UpdateSidebar(gamePanel.SelectedTile);
+                UpdateSidebar(gamePanel.SelectedTile, forceRepopulate: true);
                 UpdateBottomBar();
                 gamePanel.Invalidate();
             }
@@ -656,6 +890,43 @@ namespace TycoonGame.UI
             {
                 MessageBox.Show("Insufficient funds or maximum building level reached!", "Construction Services", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+        }
+
+        private void BtnTopLaunchIpo_Click(object? sender, EventArgs e)
+        {
+            if (engine.Stats.IsIpoLaunched) return;
+
+            // Theoretical stock price at IPO
+            double initialAssetVal = 0;
+            for (int x = 0; x < GameEngine.MapSize; x++)
+            {
+                for (int y = 0; y < GameEngine.MapSize; y++)
+                {
+                    initialAssetVal += engine.Grid[x, y].GetAssetValue();
+                }
+            }
+            engine.Stats.UpdatePlayerStockPrice(initialAssetVal);
+            double ipoPrice = engine.Stats.PlayerStockPrice;
+
+            // Sell 40% (400,000 shares) of the company's 1,000,000 shares to GPW
+            double sharesSold = 400000.0;
+            double capitalRaised = sharesSold * ipoPrice;
+
+            engine.Stats.PlayerSharesOwnedByPlayer = 600000.0; // Keeps 60%
+            engine.Stats.Cash += capitalRaised;
+            engine.Stats.IsIpoLaunched = true;
+
+            MessageBox.Show(
+                $"IPO Successful on Warsaw Stock Exchange (GPW)!\n\n" +
+                $"Sold 400,000 shares (40%) at ${ipoPrice:F2} per share.\n" +
+                $"Raised ${capitalRaised:N2} in liquid capital!",
+                "GPW Public Offering",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+
+            btnTopLaunchIpo.Visible = false;
+            UpdateBottomBar(); // Refresh top/bottom values immediately
+            gamePanel.Invalidate();
         }
 
         private class ComboBoxEmployeeItem

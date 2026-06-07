@@ -39,6 +39,10 @@ namespace TycoonGame.UI
             engine = gameEngine;
             InitializeComponent();
             RefreshFinancialData();
+
+            // Enable Double Buffering to reduce repaint flickering
+            EnableDoubleBuffered(this);
+            EnableDoubleBuffered(financialHistoryView);
         }
 
         private void InitializeComponent()
@@ -416,6 +420,18 @@ namespace TycoonGame.UI
             {
                 MessageBox.Show("Insufficient liquid funds to complete this loan repayment installment!", "Bank Loan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+        }
+
+        private void EnableDoubleBuffered(Control control)
+        {
+            try
+            {
+                typeof(Control).GetProperty("DoubleBuffered", 
+                    System.Reflection.BindingFlags.NonPublic | 
+                    System.Reflection.BindingFlags.Instance)
+                    ?.SetValue(control, true);
+            }
+            catch { }
         }
     }
 }

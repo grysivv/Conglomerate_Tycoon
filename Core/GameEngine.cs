@@ -28,7 +28,7 @@ namespace TycoonGame.Core
 
     public class GameEngine
     {
-        public const int MapSize = 40;
+        public const int MapSize = 120;
         public Tile[,] Grid { get; }
         public List<Employee> Employees { get; }
         public CompanyStats Stats { get; }
@@ -57,7 +57,7 @@ namespace TycoonGame.Core
 
         // Road Highway Entrance Coordinate
         public int EntranceX => 0;
-        public int EntranceY => 20;
+        public int EntranceY => MapSize / 2;
 
         // Step 3 Hostile Takeover states
         public bool IsGameOver { get; private set; } = false;
@@ -67,21 +67,22 @@ namespace TycoonGame.Core
         // Maps Retail coordinates (rx, ry) to Factory coordinates (fx, fy)
         public Dictionary<Tuple<int, int>, Tuple<int, int>> FreightContracts { get; } = new Dictionary<Tuple<int, int>, Tuple<int, int>>();
 
-        // Pre-calculated 40x40 distance gradient matrix from center (20,20)
+        // Pre-calculated distance gradient matrix from center (60,60)
         private readonly double[,] distanceGradientMatrix = new double[MapSize, MapSize];
 
         public GameEngine()
         {
             Grid = new Tile[MapSize, MapSize];
             
-            // Pre-calculate distance gradient matrix from center (20,20)
-            double maxDist = Math.Sqrt(20.0 * 20.0 + 20.0 * 20.0);
+            // Pre-calculate distance gradient matrix from center (MapSize/2, MapSize/2)
+            double halfSize = MapSize / 2.0;
+            double maxDist = Math.Sqrt(halfSize * halfSize + halfSize * halfSize);
             for (int x = 0; x < MapSize; x++)
             {
                 for (int y = 0; y < MapSize; y++)
                 {
-                    double dx = x - 20.0;
-                    double dy = y - 20.0;
+                    double dx = x - halfSize;
+                    double dy = y - halfSize;
                     double dist = Math.Sqrt(dx * dx + dy * dy);
                     distanceGradientMatrix[x, y] = Math.Clamp(1.0 - (dist / maxDist), 0.0, 1.0);
                 }
@@ -1114,8 +1115,14 @@ namespace TycoonGame.Core
             Stats.AiBookValue = Stats.AiCash + 500000.0;
             Stats.UpdateAiStockPrice();
 
-            // Run Hostile Takeover AI logic
-            Stats.ExecuteAiTakeoverPass(Stats.Cash, Interest_Rate, (int)CyclePhase);
+            // Calculate actual cashflow (net profit) of the month that just ended
+            Stats.PreviousMonthCashflow = Stats.GetTrailingMonthlyNetIncome();
+
+            // Run Hostile Takeover AI logic (only if IPO has been launched!)
+            if (Stats.IsIpoLaunched)
+            {
+                Stats.ExecuteAiTakeoverPass(Stats.Cash, Interest_Rate, (int)CyclePhase);
+            }
         }
 
         public void UpdateCompetitors()
