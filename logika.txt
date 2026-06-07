@@ -1,0 +1,121 @@
+I. SILNIK MAKROEKONOMICZNY (ŚRODOWISKO I RYNKI
+GLOBALNE)
+Makroekonomia narzuca odgórne warunki do prowadzenia biznesu, symulując system
+naczyń połączonych, w którym gracz i AI muszą rotować kapitałem w zależności od fazy
+gospodarki 1, 2.
+1. Cykle koniunkturalne i zmienne bazoweSilnik przelicza stan świata pierwszego dnia
+każdego miesiąca (Current_Tick). Opiera się na czterech głównych filarach:
+● GDP_Index (PKB): Oscyluje w zakresie 85.0 - 120.0 3.
+● Inflation_Rate: Od -2.0% (deflacja) do 18.0% 3.
+● Unemployment_Rate: Bezrobocie w przedziale 2.5% - 22.0% 3.
+● Interest_Rate (Stopy Procentowe): Koszt pieniądza w przedziale 1.0% - 15.0% 3.
+Wzór na cykl PKB: Opiera się na funkcji sinusoidy (trwającej 60-80 miesięcy) i szumie
+losowym:$$\text{gdpBase} = 100.0 + (\sin(\text{Current\_Tick} \times 0.08) \times
+15.0)$$$$\text{GDP\_Index} = \text{gdpBase} + \text{Random}(-1.5, 1.5)$$ 3.
+Zależnie od PKB i jego dynamiki (gdpGrowth), silnik ustala fazę cyklu (Recovery, Boom,
+Slowdown, Recession) 3. W czasie Boomu rosną pensje, inflacja, popyt i ceny akcji 1, 4. W
+Recesji Indeks Zaufania Konsumentów (CCI) spada, przez co wolumen sprzedaży potrafi
+tąpnąć o 40-60%, a obywatele ukrywają oszczędności w bankach 2, 5.
+2. Rynki Finansowe, Giełda i DźwigniaGra symuluje zaawansowaną inżynierię kapitałową
+rodem z Wall Street 6:
+● Dźwignia Finansowa: Jeśli stopa zwrotu (ROIC) z inwestycji wynosi 25%, a kredyt
+kosztuje 8%, lewarowanie jest optymalne. Jednak w recesji, gdy bank centralny
+podnosi stopy do 15%, odsetki mogą doprowadzić firmę do niewypłacalności 6.
+● Arbitraż Kapitałowy: Gracz może skupować własne akcje (Share Buyback) w
+czasie recesji (są tanie, co podnosi wskaźnik EPS), a emitować nowe w szczycie
+hossy, pozyskując darmowy kapitał na rozwój 7.
+● Wrogie Przejęcia (Hostile Takeovers): Jeśli gracz posiada mniej niż 50% akcji
+(reszta to Free Float na giełdzie), AI może potajemnie wykupić firmę i zwolnić gracza
+z funkcji CEO. Obroną jest użycie gotówki korporacyjnej na tzw. Greenmail lub
+Poison Pill 8.
+● Piramidy Korporacyjne i Spółki-Córki (Subsidiaries): Można założyć
+spółkę-córkę, zachowując w niej 51% udziałów, a 49% sfinansować z giełdy. Do
+spółki-córki przerzuca się ryzykowne, przynoszące straty badania R&D, co chroni
+wycenę korporacji-matki. Po odkryciu technologii, wymusza się odsprzedaż licencji
+matce za 1 dolara 9, 10.
+3. Globalizacja i Forex
+● Porty morskie: Importują stałe jakościowo towary, symulując konkurencję z
+zewnątrz. Stawki celne decydują o tym, czy rynek zostanie zalany tanim towarem 11,
+12.
+● Wojna Walutowa (Forex): Jeśli gracz produkuje w Mieście A (słaba waluta) i
+sprzedaje w Mieście B (silna waluta), zarabia na arbitrażu. Jeśli jednak Miasto A
+podniesie stopy procentowe, jego waluta się umocni, drastycznie podnosząc koszty
+produkcji i niszcząc rentowność całego łańcucha dostaw 13, 14.
+II. ARCHITEKTURA MIAST I PRZESTRZENI
+Każde miasto to oddzielny rynek. Miasta definiują parametry: Base_Population (pojemność
+rynku), Wealth_Index (zamożność, akceptacja marży), Real_Estate_Index (koszt czynszów)
+oraz Base_Wage_Rate 15. Specjalne cechy miast (np. Węzeł Logistyczny tnący koszty o
+30%, czy Metropolia Biznesowa podnosząca bogactwo o 40%, ale czynsze o 100%)
+wymuszają inne podejścia 15.
+Makro-urbanistyka (Siatka Gridowa):Każda działka ma Land Value (Wartość ziemi) oraz
+Traffic Index (Ruch pieszych):
+● Fabryki: Muszą stać na polach o minimalnym Land Value (0-10), aby unikać podatku
+od nieruchomości (Land Tax), który zjadłby marżę 16.
+● Sklepy: Wymagają maksymalnego Traffic Index (90-100). Sklep na obrzeżach
+zostanie zignorowany przez algorytmy ścieżek zakupowych, niezależnie od cen 16,
+17.
+● Apartamenty komercyjne: Generują dochód z renty lokatorskiej zależny od PKB,
+działając jako rynkowa poduszka w czasie recesji 16, 18.
+III. MIKROEKONOMIA I ZACHOWANIA KONSUMENTÓW
+Serce gry stanowi deterministyczny algorytm decyzyjny konsumentów oparty na teorii
+użyteczności 19-21.
+1. Popyt Agregowany (Total_Local_Demand)Ilość dóbr, jaką miasto chce
+kupić:$$\text{Total\_Local\_Demand} = \text{Base\_Population} \times
+\text{Product\_Consumption\_Rate} \times \text{ConsumerDemandIndex} \times
+\text{PriceElasticity}$$ 15.Wysoka elastyczność (PriceElasticity) dóbr luksusowych sprawia,
+że w recesji ich sprzedaż załamuje się dramatycznie, co projektanci określili jako potencjalny
+"Efekt Domina" wymagający założenia minimalnego popytu w silniku 15, 22.
+2. Algorytm Atrakcyjności (Overall Rating)To ocena produktu w skali 0-100, która
+decyduje o podziale rynku (Market Share) 21, 22:$$\text{Overall\ Rating} = (\text{Price\
+Score} \times W_P) + (\text{Quality\ Score} \times W_Q) + (\text{Brand\ Score\ lub\
+Reliability} \times W_B)$$ 22, 23.Wagi ($W$) zależą od branży. Dla soli to w 70% niska
+cena, dla luksusowych zegarków cena to zaledwie 10%, a marka to 50% – wysoka cena
+wręcz napędza sprzedaż 23.
+3. Branding i R&D
+● Marka: Posiada wskaźniki Rozpoznawalności (Awareness) i Lojalności (Loyalty).
+Stanowi barierę wejścia. Nowy gracz z lepszym towarem nie zniszczy Twojej
+sprzedaży od razu, jeśli konsumenci są lojalni 24.
+● Transfer Technologii (Catch-up effect): Badania (Tech Index) podnoszą jakość
+produktu. Jeśli ktoś odkrył poziom technologii 200, doganianie go w laboratoriach
+idzie nieco szybciej, o ile nie wykupimy licencji 25.
+IV. ZARZĄDZANIE OPERACYJNE (WEWNĘTRZNA MECHANIKA
+FIRMY)
+Gra traktuje obiekty (fabryki, sklepy) jako organizmy złożone z siatki 3x3 bloków (Layout) 26.
+1. Teoria Kolejek i Wąskie GardłaDziały to Purchasing (Zakup), Manufacturing (Produkcja)
+i Sales (Sprzedaż). Limituje je dzienna przepustowość ($Cap_{max}$) zależna od poziomu
+(Level 1-9) pracowników 26, 27.Jeśli blok produkcyjny tworzy 10 000 jednostek, a blok
+sprzedaży przepuszcza 2 000, pojawia się wąskie gardło (Bottleneck). Reszta towaru
+zamienia się w koszty magazynowania i zamraża kapitał obrotowy, prowadząc do zysku
+"tylko na papierze" i realnego bankructwa 27, 28. Płynne skalowanie to klucz do osiągnięcia
+korzyści skali (Economies of Scale) i drastycznego cięcia kosztów 29, 30.
+2. Degradacja Jakości i SubstytucjaJakość końcowa nie równa się tylko technologii R&D,
+ale jest uzależniona od najsłabszego ogniwa surowcowego 28, 31.$$Q_{final} = (Tech \times
+W_T) + \sum (Q_{input\_i} \times W_{input\_i})$$ 32.Jeśli silnik samochodu wymaga
+zaawansowanej elektroniki (waga 60%), szkła (25%) i plastiku (15%), użycie najtańszego
+plastiku o jakości 5 "zatruje" produkt premium, zbijając ostateczny wynik tak mocno, że
+klienci go odrzucą 31, 32.
+3. Monopolizacja Surowców (Renta Rzadkości)Wykupywanie kopalń krzemu lub ropy ma
+tło strategiczne. Przejmując monopol, gracz odcina AI surowce. AI musi zamknąć swoje
+zaawansowane fabryki komputerów lub kupować krzem od gracza po cenie zaporowej.
+Gracz przesuwa swoje zyski ze sklepów bezpośrednio na rentę monopolisty surowcowego
+33, 34.
+V. ZAAWANSOWANA KONKURENCJA I TEORIA GIER
+Gra posiada dedykowane modele do obsługi agresywnych zagrań matematycznych rynków
+35.
+1. Wojny Cenowe i Elastyczność KrzywejZachowanie sprzedaży przy zmianie cen określa
+rygorystyczny wzór:$$D = P^{-\epsilon} \times \left( \frac{Overall\ Rating_{Nasz}}{Overall\
+Rating_{Sredni\ Rynku}} \right)^\gamma$$ 35.Spadek ceny mleka o 10% u przeciwnika
+może ułamek sekundy później zredukować sprzedaż gracza o 50%, jeśli lojalność wobec
+marki gracza była mała 36.
+2. Predatory Pricing (Dumping)AI (oraz gracz) wykorzystuje politykę niszczącą w oparciu o
+teorię gier. Bogata korporacja potrafi obniżyć ceny znacznie poniżej kosztów zmiennych ($P
+< AVC$). Będą dopłacać do biznesu latami, finansując straty z innych dywizji (np. wydobycia
+węgla). Gdy startup gracza zbankrutuje przez utratę płynności, AI podnosi ceny do
+poziomów monopolistycznych 36, 37.
+3. Profile Osobowości AIPrezesi AI mają ukryte statystyki: Aggressiveness (Agresja
+cenowa i wchodzenie na obce rynki), Expansionism (Szybkość reinwestowania), Financial
+Prudence (Ostrożność finansowa - stosunek do długu) 38.Złota reguła silnika: Jeśli AI ma
+wysoką agresję, ale niską ostrożność (jest potężnie zalewarowane długiem), gracz nie
+powinien wdawać się w wojnę cenową. Wystarczy poczekać na cykliczną recesję. Wysokie
+stopy procentowe zniszczą przeciwnika same, a gracz wykupi jego upadający majątek od
+syndyka 38, 39.
