@@ -42,6 +42,25 @@ namespace TycoonGame.Rendering
         public event EventHandler<Tuple<int, int>?>? TileSelected;
         public event EventHandler? MapChanged;
 
+        // UI Viewport Overlays
+        private Panel pnlHoverTooltip = null!;
+        private Panel pnlBuildingCustomizer = null!;
+        
+        // Tooltip Labels
+        private Label lblHoverType = null!;
+        private Label lblHoverAddress = null!;
+        private Label lblHoverStaff = null!;
+        private Label lblHoverStatus = null!;
+        private Label lblHoverEconomics = null!;
+        private Label lblHoverSkills = null!;
+
+        // Customizer Controls
+        private Label lblCustType = null!;
+        private Label lblCustAddress = null!;
+        private Label lblCustStaffVal = null!;
+        private Label lblCustTrainVal = null!;
+        private Button btnCustUpgrade = null!;
+
         public MonoGamePanel()
         {
             // Configure control styles for custom GPU rendering
@@ -54,6 +73,260 @@ namespace TycoonGame.Rendering
             
             // Allow keyboard focus
             Focus();
+            InitializeOverlays();
+        }
+
+        private void InitializeOverlays()
+        {
+            // 1. Hover Tooltip Overlay Panel
+            pnlHoverTooltip = new Panel
+            {
+                Size = new Size(240, 140),
+                BackColor = System.Drawing.Color.FromArgb(11, 15, 25),
+                BorderStyle = BorderStyle.FixedSingle,
+                Visible = false
+            };
+            pnlHoverTooltip.Paint += (s, e) =>
+            {
+                using (var pen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(0, 240, 255), 1))
+                {
+                    var rect = pnlHoverTooltip.ClientRectangle;
+                    rect.Width -= 1;
+                    rect.Height -= 1;
+                    e.Graphics.DrawRectangle(pen, rect);
+                }
+            };
+
+            lblHoverType = CreateTooltipLabel(new Point(10, 10), new Size(220, 18), true, 9.5F);
+            lblHoverAddress = CreateTooltipLabel(new Point(10, 32), new Size(220, 16), false, 8.5F);
+            lblHoverStaff = CreateTooltipLabel(new Point(10, 52), new Size(220, 16), false, 8.5F);
+            lblHoverStatus = CreateTooltipLabel(new Point(10, 72), new Size(220, 16), false, 8.5F);
+            lblHoverEconomics = CreateTooltipLabel(new Point(10, 92), new Size(220, 16), false, 8.5F);
+            lblHoverSkills = CreateTooltipLabel(new Point(10, 112), new Size(220, 16), false, 8.5F);
+
+            pnlHoverTooltip.Controls.Add(lblHoverType);
+            pnlHoverTooltip.Controls.Add(lblHoverAddress);
+            pnlHoverTooltip.Controls.Add(lblHoverStaff);
+            pnlHoverTooltip.Controls.Add(lblHoverStatus);
+            pnlHoverTooltip.Controls.Add(lblHoverEconomics);
+            pnlHoverTooltip.Controls.Add(lblHoverSkills);
+            this.Controls.Add(pnlHoverTooltip);
+
+            // 2. Click Customizer Overlay Panel
+            pnlBuildingCustomizer = new Panel
+            {
+                Size = new Size(300, 245),
+                BackColor = System.Drawing.Color.FromArgb(15, 20, 35),
+                BorderStyle = BorderStyle.FixedSingle,
+                Visible = false,
+                Location = new Point(15, 15)
+            };
+            pnlBuildingCustomizer.Paint += (s, e) =>
+            {
+                using (var pen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(0, 255, 102), 1))
+                {
+                    var rect = pnlBuildingCustomizer.ClientRectangle;
+                    rect.Width -= 1;
+                    rect.Height -= 1;
+                    e.Graphics.DrawRectangle(pen, rect);
+                }
+            };
+
+            Label lblCustTitle = new Label
+            {
+                Text = "DEPARTMENT CONTROL",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = System.Drawing.Color.FromArgb(0, 240, 255),
+                Location = new Point(15, 15),
+                Size = new Size(240, 20)
+            };
+            pnlBuildingCustomizer.Controls.Add(lblCustTitle);
+
+            Button btnClose = new Button
+            {
+                Text = "X",
+                Location = new Point(265, 10),
+                Size = new Size(25, 25),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = System.Drawing.Color.FromArgb(48, 56, 70),
+                ForeColor = System.Drawing.Color.White,
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold)
+            };
+            btnClose.FlatAppearance.BorderSize = 0;
+            btnClose.Click += (s, e) => pnlBuildingCustomizer.Visible = false;
+            pnlBuildingCustomizer.Controls.Add(btnClose);
+
+            lblCustType = CreateCustomizerLabel(new Point(15, 45), new Size(270, 16));
+            lblCustAddress = CreateCustomizerLabel(new Point(15, 62), new Size(270, 16));
+
+            // Hired workforce adjustment
+            Label lblStaffTitle = new Label { Text = "Hired Workforce:", Location = new Point(15, 90), Size = new Size(110, 20), ForeColor = System.Drawing.Color.White, Font = new Font("Segoe UI", 9F, FontStyle.Bold) };
+            pnlBuildingCustomizer.Controls.Add(lblStaffTitle);
+
+            Button btnStaffDec = CreateFlatButton("-", new Point(135, 87), new Size(25, 25), (s, e) => AdjustHiredStaff(-1));
+            lblCustStaffVal = new Label
+            {
+                Text = "0 / 0",
+                Location = new Point(165, 90),
+                Size = new Size(60, 20),
+                ForeColor = System.Drawing.Color.White,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold)
+            };
+            Button btnStaffInc = CreateFlatButton("+", new Point(230, 87), new Size(25, 25), (s, e) => AdjustHiredStaff(1));
+            pnlBuildingCustomizer.Controls.Add(btnStaffDec);
+            pnlBuildingCustomizer.Controls.Add(lblCustStaffVal);
+            pnlBuildingCustomizer.Controls.Add(btnStaffInc);
+
+            // Training budget adjustment
+            Label lblTrainTitle = new Label { Text = "Hourly Training:", Location = new Point(15, 130), Size = new Size(110, 20), ForeColor = System.Drawing.Color.White, Font = new Font("Segoe UI", 9F, FontStyle.Bold) };
+            pnlBuildingCustomizer.Controls.Add(lblTrainTitle);
+
+            Button btnTrainDec = CreateFlatButton("- $5", new Point(135, 127), new Size(40, 25), (s, e) => AdjustTrainingBudget(-5));
+            lblCustTrainVal = new Label
+            {
+                Text = "$0 / hr",
+                Location = new Point(180, 130),
+                Size = new Size(50, 20),
+                ForeColor = System.Drawing.Color.FromArgb(80, 200, 120),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold)
+            };
+            Button btnTrainInc = CreateFlatButton("+ $5", new Point(235, 127), new Size(40, 25), (s, e) => AdjustTrainingBudget(5));
+            pnlBuildingCustomizer.Controls.Add(btnTrainDec);
+            pnlBuildingCustomizer.Controls.Add(lblCustTrainVal);
+            pnlBuildingCustomizer.Controls.Add(btnTrainInc);
+
+            // Building Upgrade Button
+            btnCustUpgrade = new Button
+            {
+                Text = "UPGRADE STRUCTURAL BLOCK",
+                Location = new Point(15, 180),
+                Size = new Size(270, 45),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = System.Drawing.Color.FromArgb(0, 255, 102),
+                ForeColor = System.Drawing.Color.Black,
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnCustUpgrade.FlatAppearance.BorderSize = 0;
+            btnCustUpgrade.Click += BtnCustUpgrade_Click;
+            pnlBuildingCustomizer.Controls.Add(btnCustUpgrade);
+
+            this.Controls.Add(pnlBuildingCustomizer);
+        }
+
+        private Label CreateTooltipLabel(Point loc, Size sz, bool bold, float fontSize)
+        {
+            return new Label
+            {
+                Location = loc,
+                Size = sz,
+                ForeColor = System.Drawing.Color.White,
+                Font = new Font("Segoe UI", fontSize, bold ? FontStyle.Bold : FontStyle.Regular),
+                BackColor = System.Drawing.Color.Transparent
+            };
+        }
+
+        private Label CreateCustomizerLabel(Point loc, Size sz)
+        {
+            var lbl = new Label
+            {
+                Location = loc,
+                Size = sz,
+                ForeColor = System.Drawing.Color.FromArgb(170, 175, 190),
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
+                BackColor = System.Drawing.Color.Transparent
+            };
+            pnlBuildingCustomizer.Controls.Add(lbl);
+            return lbl;
+        }
+
+        private Button CreateFlatButton(string text, Point loc, Size sz, EventHandler onClick)
+        {
+            var btn = new Button
+            {
+                Text = text,
+                Location = loc,
+                Size = sz,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = System.Drawing.Color.FromArgb(48, 56, 70),
+                ForeColor = System.Drawing.Color.White,
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 8F, FontStyle.Bold)
+            };
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Click += onClick;
+            return btn;
+        }
+
+        private void AdjustHiredStaff(int amount)
+        {
+            if (Engine == null || SelectedTile == null) return;
+            var tile = Engine.Grid[SelectedTile.Item1, SelectedTile.Item2];
+            int newStaff = Math.Clamp(tile.EmployeeCount + amount, 0, tile.MaxEmployees);
+            if (tile.EmployeeCount != newStaff)
+            {
+                tile.EmployeeCount = newStaff;
+                UpdateCustomizerData(tile);
+                MapChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        private void AdjustTrainingBudget(double amount)
+        {
+            if (Engine == null || SelectedTile == null) return;
+            var tile = Engine.Grid[SelectedTile.Item1, SelectedTile.Item2];
+            double newBudget = Math.Clamp(tile.TrainingBudgetPerHour + amount, 0.0, 100.0);
+            if (tile.TrainingBudgetPerHour != newBudget)
+            {
+                tile.TrainingBudgetPerHour = newBudget;
+                UpdateCustomizerData(tile);
+                MapChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        private void BtnCustUpgrade_Click(object? sender, EventArgs e)
+        {
+            if (Engine == null || SelectedTile == null) return;
+            int tx = SelectedTile.Item1;
+            int ty = SelectedTile.Item2;
+
+            if (Engine.UpgradeStructure(tx, ty))
+            {
+                var tile = Engine.Grid[tx, ty];
+                UpdateCustomizerData(tile);
+                MapChanged?.Invoke(this, EventArgs.Empty);
+                Invalidate();
+            }
+            else
+            {
+                MessageBox.Show("Insufficient funds or maximum building level reached!", "Construction Upgrades", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void UpdateCustomizerData(Tile tile)
+        {
+            lblCustType.Text = $"{tile.Type} (Tier {tile.Level})";
+            lblCustAddress.Text = $"Sector Address: [{tile.X}, {tile.Y}]";
+            lblCustStaffVal.Text = $"{tile.EmployeeCount} / {tile.MaxEmployees}";
+            lblCustTrainVal.Text = $"${tile.TrainingBudgetPerHour:F0} / hr";
+
+            double upgradeCost = tile.Type switch
+            {
+                TileType.Office => 24000.0,
+                TileType.Factory => 48000.0,
+                TileType.Retail => 32000.0,
+                TileType.PowerPlant => 40000.0,
+                TileType.Apartment => 40000.0,
+                TileType.University => 60000.0,
+                _ => 0
+            };
+            btnCustUpgrade.Text = tile.Level < 3 ? $"UPGRADE BUILDING (${upgradeCost / 1000:F0}K)" : "MAX LEVEL REACHED";
+            btnCustUpgrade.Enabled = tile.Level < 3;
+            btnCustUpgrade.BackColor = tile.Level < 3 ? System.Drawing.Color.FromArgb(0, 255, 102) : System.Drawing.Color.FromArgb(48, 56, 70);
+            btnCustUpgrade.ForeColor = tile.Level < 3 ? System.Drawing.Color.Black : System.Drawing.Color.FromArgb(170, 175, 190);
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -229,6 +502,40 @@ namespace TycoonGame.Rendering
                     HoveredTile = newHover;
                     Invalidate();
                 }
+
+                // Update Hover Tooltip overlay
+                if (Engine != null && HoveredTile != null &&
+                    HoveredTile.Item1 >= 0 && HoveredTile.Item1 < GameEngine.MapSize &&
+                    HoveredTile.Item2 >= 0 && HoveredTile.Item2 < GameEngine.MapSize)
+                {
+                    Tile tile = Engine.Grid[HoveredTile.Item1, HoveredTile.Item2];
+                    if (tile.Type != TileType.Grass && tile.Type != TileType.Road)
+                    {
+                        lblHoverType.Text = $"{tile.Type} (Tier {tile.Level})";
+                        lblHoverAddress.Text = $"Sector Address: [{tile.X}, {tile.Y}]";
+                        lblHoverStaff.Text = $"Staff Hired: {tile.EmployeeCount} / {tile.MaxEmployees}";
+                        lblHoverStatus.Text = $"Powered: {(tile.IsPowered ? "YES" : "NO")} | Road Access: {(tile.HasRoadAccess ? "YES" : "NO")}";
+                        lblHoverEconomics.Text = $"Upkeep: ${tile.MaintenanceCost:F0}/hr | Value: ${tile.GetAssetValue() / 1000:F0}K";
+                        lblHoverSkills.Text = $"Skill: {(tile.SkillLevel * 100):F0}% | Morale: {(tile.Morale * 100):F0}%";
+
+                        // Offset the tooltip location so it doesn't wrap off the window edges
+                        int tx = e.X + 15;
+                        int ty = e.Y + 15;
+                        if (tx + pnlHoverTooltip.Width > ClientSize.Width) tx = e.X - pnlHoverTooltip.Width - 15;
+                        if (ty + pnlHoverTooltip.Height > ClientSize.Height) ty = e.Y - pnlHoverTooltip.Height - 15;
+
+                        pnlHoverTooltip.Location = new Point(Math.Max(0, tx), Math.Max(0, ty));
+                        pnlHoverTooltip.Visible = true;
+                    }
+                    else
+                    {
+                        pnlHoverTooltip.Visible = false;
+                    }
+                }
+                else
+                {
+                    pnlHoverTooltip.Visible = false;
+                }
             }
         }
 
@@ -272,6 +579,7 @@ namespace TycoonGame.Rendering
         private void ExecuteToolAction(int tx, int ty)
         {
             if (Engine == null) return;
+            pnlBuildingCustomizer.Visible = false; // default hide customizer on action
             bool actionSuccess = false;
 
             switch (ActiveTool)
@@ -280,6 +588,14 @@ namespace TycoonGame.Rendering
                     SelectedTile = new Tuple<int, int>(tx, ty);
                     TileSelected?.Invoke(this, SelectedTile);
                     actionSuccess = true;
+
+                    // Display building customizer overlay if inspect target is an active department
+                    Tile tile = Engine.Grid[tx, ty];
+                    if (tile.Type != TileType.Grass && tile.Type != TileType.Road)
+                    {
+                        UpdateCustomizerData(tile);
+                        pnlBuildingCustomizer.Visible = true;
+                    }
                     break;
 
                 case BuildTool.BuildRoad:
@@ -338,10 +654,22 @@ namespace TycoonGame.Rendering
 
         public void SelectTileCoordinates(int tx, int ty)
         {
+            if (Engine == null) return;
             if (tx >= 0 && tx < GameEngine.MapSize && ty >= 0 && ty < GameEngine.MapSize)
             {
                 SelectedTile = new Tuple<int, int>(tx, ty);
                 TileSelected?.Invoke(this, SelectedTile);
+
+                Tile tile = Engine.Grid[tx, ty];
+                if (tile.Type != TileType.Grass && tile.Type != TileType.Road)
+                {
+                    UpdateCustomizerData(tile);
+                    pnlBuildingCustomizer.Visible = true;
+                }
+                else
+                {
+                    pnlBuildingCustomizer.Visible = false;
+                }
                 
                 // Pan camera to center on selected tile
                 Vector2 pos = Renderer.TileToScreen(tx, ty, ClientSize.Width, ClientSize.Height);

@@ -121,24 +121,29 @@ namespace TycoonGame.UI
         {
             flowNodes.Controls.Clear();
 
-            // Calculate scientist speed
+            // Calculate speed
             double speed = 0;
             int scientists = 0;
-            foreach (var emp in engine.Employees)
+            double brainDrainMultiplier = engine.Unemployment_Rate >= 0.08 ? 0.60 : 1.0;
+            for (int x = 0; x < GameEngine.MapSize; x++)
             {
-                if (emp.Role == EmployeeRole.Scientist && emp.AssignedX != -1)
+                for (int y = 0; y < GameEngine.MapSize; y++)
                 {
-                    Tile tile = engine.Grid[emp.AssignedX, emp.AssignedY];
-                    if (tile.Type == TileType.Office)
+                    Tile tile = engine.Grid[x, y];
+                    if (tile.Type == TileType.Office && tile.Level > 0 && tile.EmployeeCount > 0)
                     {
                         double powerFactor = tile.IsPowered ? 1.0 : 0.2;
-                        speed += 3.0 * emp.GetPerformanceMultiplier() * powerFactor;
-                        scientists++;
+                        speed += tile.EmployeeCount * tile.GetPerformanceMultiplier() * powerFactor * brainDrainMultiplier * 1.5;
+                        scientists += tile.EmployeeCount;
                     }
                 }
             }
 
-            lblResearchSpeed.Text = $"Scientist Output: {speed:F1} RP/hr ({scientists} active scientists assigned to offices)";
+            lblResearchSpeed.Text = $"Office Staff Output: {speed:F1} RP/hr ({scientists} office staff on map)";
+            if (brainDrainMultiplier < 1.0)
+            {
+                lblResearchSpeed.Text += " [40% Brain Drain Penalty Active]";
+            }
 
             if (engine.ActiveResearch != null)
             {

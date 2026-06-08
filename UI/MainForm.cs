@@ -48,10 +48,6 @@ namespace TycoonGame.UI
         private Label lblSelectedTileInventory;
         private Label lblSelectedTileStaff;
         
-        private ListBox lstAssignedEmployees;
-        private ComboBox cmbUnassignedEmployees;
-        private Button btnAssignEmployee;
-        private Button btnUnassignEmployee;
         private Button btnUpgradeBuilding;
 
         // Top Bar controls
@@ -999,59 +995,7 @@ namespace TycoonGame.UI
             btnUpgradeBuilding.Click += BtnUpgradeBuilding_Click;
             pnlSidebar.Controls.Add(btnUpgradeBuilding);
 
-            // Employee assignment section inside sidebar
-            Label lblStaffTitle = new Label { Text = "Assigned Personnel:", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.White, Size = new Size(220, 18), Margin = new Padding(0, 5, 0, 2) };
-            pnlSidebar.Controls.Add(lblStaffTitle);
-
-            lstAssignedEmployees = new ListBox
-            {
-                Size = new Size(220, 60),
-                BackColor = Color.FromArgb(48, 52, 64),
-                ForeColor = Color.White,
-                BorderStyle = BorderStyle.None
-            };
-            pnlSidebar.Controls.Add(lstAssignedEmployees);
-
-            btnUnassignEmployee = new Button
-            {
-                Text = "Unassign Staff Member",
-                Size = new Size(220, 24),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(140, 40, 40),
-                ForeColor = Color.White,
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 2, 0, 5)
-            };
-            btnUnassignEmployee.FlatAppearance.BorderSize = 0;
-            btnUnassignEmployee.Click += BtnUnassignEmployee_Click;
-            pnlSidebar.Controls.Add(btnUnassignEmployee);
-
-            Label lblAssignTitle = new Label { Text = "Deploy Available Staff:", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.White, Size = new Size(220, 18), Margin = new Padding(0, 5, 0, 2) };
-            pnlSidebar.Controls.Add(lblAssignTitle);
-
-            cmbUnassignedEmployees = new ComboBox
-            {
-                Size = new Size(220, 25),
-                BackColor = Color.FromArgb(48, 52, 64),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-            pnlSidebar.Controls.Add(cmbUnassignedEmployees);
-
-            btnAssignEmployee = new Button
-            {
-                Text = "Deploy Staff Member",
-                Size = new Size(220, 24),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(64, 100, 150),
-                ForeColor = Color.White,
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 2, 0, 2)
-            };
-            btnAssignEmployee.FlatAppearance.BorderSize = 0;
-            btnAssignEmployee.Click += BtnAssignEmployee_Click;
-            pnlSidebar.Controls.Add(btnAssignEmployee);
+            // (Workforce management is building-centric and handled in-viewport)
 
             // 3. Bottom Dashboard panel
             TableLayoutPanel pnlBottom = new TableLayoutPanel
@@ -1415,14 +1359,6 @@ namespace TycoonGame.UI
                 SetLabelText(lblSelectedTileStaff, "Employees Assigned: 0 / 0");
                 
                 SetControlVisible(btnUpgradeBuilding, false);
-                SetControlEnabled(btnAssignEmployee, false);
-                SetControlEnabled(btnUnassignEmployee, false);
-
-                if (repopulate)
-                {
-                    lstAssignedEmployees.Items.Clear();
-                    cmbUnassignedEmployees.Items.Clear();
-                }
                 return;
             }
 
@@ -1489,72 +1425,10 @@ namespace TycoonGame.UI
                 SetControlVisible(btnUpgradeBuilding, false);
             }
 
-            if (repopulate)
-            {
-                lstAssignedEmployees.Items.Clear();
-                var assigned = engine.Employees.Where(e => e.AssignedX == tx && e.AssignedY == ty).ToList();
-                foreach (var emp in assigned)
-                {
-                    lstAssignedEmployees.Items.Add($"{emp.Name} ({emp.Role})");
-                }
-
-                cmbUnassignedEmployees.Items.Clear();
-                var unassigned = engine.Employees.Where(e => e.AssignedX == -1).ToList();
-
-                if (tile.Type == TileType.PowerPlant)
-                {
-                    unassigned = unassigned.Where(e => e.Role == EmployeeRole.Worker || e.Role == EmployeeRole.Manager).ToList();
-                }
-                else if (tile.Type == TileType.Office)
-                {
-                    // Offices accept all roles
-                }
-                else if (tile.Type == TileType.Factory)
-                {
-                    unassigned = unassigned.Where(e => e.Role == EmployeeRole.Worker || e.Role == EmployeeRole.Manager).ToList();
-                }
-                else if (tile.Type == TileType.Retail)
-                {
-                    unassigned = unassigned.Where(e => e.Role == EmployeeRole.Worker || e.Role == EmployeeRole.Manager).ToList();
-                }
-
-                foreach (var emp in unassigned)
-                {
-                    cmbUnassignedEmployees.Items.Add(new ComboBoxEmployeeItem(emp));
-                }
-            }
-
-            SetControlEnabled(btnUnassignEmployee, lstAssignedEmployees.Items.Count > 0);
-            
-            bool spaceAvailable = tile.EmployeeCount < tile.MaxEmployees;
-            SetControlEnabled(btnAssignEmployee, spaceAvailable && cmbUnassignedEmployees.Items.Count > 0 && isBuilding);
+            // Workforce properties are managed inside the viewport overlays.
         }
 
-        private void BtnAssignEmployee_Click(object? sender, EventArgs e)
-        {
-            if (engine == null || gamePanel == null || gamePanel.SelectedTile == null || cmbUnassignedEmployees.SelectedItem == null) return;
-            var item = (ComboBoxEmployeeItem)cmbUnassignedEmployees.SelectedItem;
-            
-            if (engine.AssignEmployee(item.Emp.Id, gamePanel.SelectedTile.Item1, gamePanel.SelectedTile.Item2))
-            {
-                UpdateSidebar(gamePanel.SelectedTile, forceRepopulate: true);
-                gamePanel.Invalidate();
-            }
-        }
 
-        private void BtnUnassignEmployee_Click(object? sender, EventArgs e)
-        {
-            if (engine == null || gamePanel == null || gamePanel.SelectedTile == null || lstAssignedEmployees.SelectedIndex == -1) return;
-            int idx = lstAssignedEmployees.SelectedIndex;
-            var assigned = engine.Employees.Where(e => e.AssignedX == gamePanel.SelectedTile.Item1 && e.AssignedY == gamePanel.SelectedTile.Item2).ToList();
-            
-            if (idx >= 0 && idx < assigned.Count)
-            {
-                engine.UnassignEmployee(assigned[idx].Id);
-                UpdateSidebar(gamePanel.SelectedTile, forceRepopulate: true);
-                gamePanel.Invalidate();
-            }
-        }
 
         private void BtnUpgradeBuilding_Click(object? sender, EventArgs e)
         {
@@ -1658,12 +1532,7 @@ namespace TycoonGame.UI
             InitializeMainMenu();
         }
 
-        private class ComboBoxEmployeeItem
-        {
-            public Employee Emp { get; }
-            public ComboBoxEmployeeItem(Employee emp) => Emp = emp;
-            public override string ToString() => $"{Emp.Name} ({Emp.Role})";
-        }
+
 
         #endregion
     }

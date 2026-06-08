@@ -12,6 +12,14 @@ namespace TycoonGame.Core
         public bool HasRoadAccess { get; set; }
         public int EmployeeCount { get; set; }
         public int MaxEmployees { get; set; }
+        public double TrainingBudgetPerHour { get; set; }
+        public double SkillLevel { get; set; }
+        public double Morale { get; set; }
+
+        public double GetPerformanceMultiplier()
+        {
+            return (0.4 + 0.6 * SkillLevel) * (0.5 + 0.5 * Morale);
+        }
         
         // Supply Chain / Inventory / Tenant parameters
         // Note: For Apartments, Inventory represents active tenants count, and MaxInventory represents tenant capacity.
@@ -55,6 +63,9 @@ namespace TycoonGame.Core
             TrafficIndex = 0.0;
             RetailPrice = 0.0;
             DepreciatedValue = 0.0;
+            TrainingBudgetPerHour = 0.0;
+            SkillLevel = 0.1;
+            Morale = 0.8;
         }
 
         public void ResetToGrass()
@@ -74,6 +85,9 @@ namespace TycoonGame.Core
             LastDayEarnings = 0;
             RetailPrice = 0.0;
             DepreciatedValue = 0.0;
+            TrainingBudgetPerHour = 0.0;
+            SkillLevel = 0.1;
+            Morale = 0.8;
             // Note: We retain LandValue and base TrafficIndex so the geography is static
         }
 
@@ -87,6 +101,9 @@ namespace TycoonGame.Core
             HistoricalEarnings = 0;
             LastDayEarnings = 0;
             RetailPrice = 0.0;
+            TrainingBudgetPerHour = 0.0;
+            SkillLevel = 0.1;
+            Morale = 0.8;
 
             switch (type)
             {

@@ -66,6 +66,10 @@ namespace TycoonGame.Core
         public double TrafficIndex { get; set; }
         public double RetailPrice { get; set; }
         public double DepreciatedValue { get; set; }
+        public int EmployeeCount { get; set; }
+        public double TrainingBudgetPerHour { get; set; }
+        public double SkillLevel { get; set; }
+        public double Morale { get; set; }
     }
 
     public class EmployeeSaveData
@@ -724,42 +728,42 @@ namespace TycoonGame.Core
                 ExecuteMonthlyStockMarketPass();
             }
 
-            // Perform Wage updates and training costs
+            // Perform Wage updates and training costs per building
             double totalWages = 0;
             double totalTrainingCost = 0;
             double wageScaleFactor = 1.0 + (0.06 - Unemployment_Rate) * 1.5;
 
-            foreach (var employee in Employees)
+            for (int x = 0; x < MapSize; x++)
             {
-                double marketAverageWage = employee.Role switch
+                for (int y = 0; y < MapSize; y++)
                 {
-                    EmployeeRole.Worker => 17.50 * wageScaleFactor,
-                    EmployeeRole.Manager => 30.00 * wageScaleFactor,
-                    EmployeeRole.Scientist => 36.00 * wageScaleFactor,
-                    _ => 16.00 * wageScaleFactor
-                };
-
-                employee.Update(marketAverageWage, TrainingBudgetPerHourPerEmployee);
-
-                // High Scientist morale sensitivity to global Unemployment_Rate
-                if (employee.Role == EmployeeRole.Scientist)
-                {
-                    double unemploymentPenalty = (Unemployment_Rate - 0.06) * 5.0; // scales above baseline 6%
-                    if (unemploymentPenalty > 0)
+                    Tile tile = Grid[x, y];
+                    if (tile.Level > 0 && tile.EmployeeCount > 0)
                     {
-                        employee.Morale = Math.Clamp(employee.Morale - unemploymentPenalty * 0.05, 0.05, 1.0);
-                    }
-                }
+                        double baseWage = tile.Type switch
+                        {
+                            TileType.Office => 30.00,
+                            _ => 17.50
+                        };
+                        double hourlyWage = baseWage * wageScaleFactor;
+                        totalWages += hourlyWage * tile.EmployeeCount;
+                        totalTrainingCost += tile.TrainingBudgetPerHour;
 
-                if (employee.AssignedX != -1)
-                {
-                    totalWages += employee.HourlyWage;
-                    totalTrainingCost += TrainingBudgetPerHourPerEmployee;
+                        // Skills training progression
+                        tile.SkillLevel = Math.Clamp(tile.SkillLevel + (tile.TrainingBudgetPerHour / tile.EmployeeCount) * 0.0005, 0.1, 1.0);
+
+                        // Morale shifts based on utility connections
+                        double moraleTarget = 0.8;
+                        if (!tile.IsPowered) moraleTarget -= 0.3;
+                        if (!tile.HasRoadAccess) moraleTarget -= 0.3;
+                        tile.Morale = tile.Morale * 0.95 + moraleTarget * 0.05;
+                        tile.Morale = Math.Clamp(tile.Morale, 0.1, 1.0);
+                    }
                 }
             }
 
             Stats.CurrentHourWages = totalWages;
-            Stats.Cash -= totalTrainingCost;
+            Stats.Cash -= (totalWages + totalTrainingCost);
 
             // Process Production, Sales, Rent, and Logistics
             UpdateProductionAndContracts();
@@ -897,10 +901,9 @@ namespace TycoonGame.Core
 
                     if (tile.Type == TileType.Office)
                     {
-                        var assignedStaff = Employees.Where(e => e.AssignedX == x && e.AssignedY == y).ToList();
-                        if (assignedStaff.Count > 0)
+                        if (tile.EmployeeCount > 0)
                         {
-                            double performanceSum = assignedStaff.Sum(e => e.GetPerformanceMultiplier());
+                            double performanceSum = tile.EmployeeCount * tile.GetPerformanceMultiplier();
                             double powerFactor = tile.IsPowered ? 1.0 : 0.1;
                             double roadFactor = tile.HasRoadAccess ? 1.0 : 0.4;
                             
@@ -913,10 +916,9 @@ namespace TycoonGame.Core
                     }
                     else if (tile.Type == TileType.Factory)
                     {
-                        var assignedStaff = Employees.Where(e => e.AssignedX == x && e.AssignedY == y).ToList();
-                        if (assignedStaff.Count > 0)
+                        if (tile.EmployeeCount > 0)
                         {
-                            double performanceSum = assignedStaff.Sum(e => e.GetPerformanceMultiplier());
+                            double performanceSum = tile.EmployeeCount * tile.GetPerformanceMultiplier();
                             double powerFactor = tile.IsPowered ? 1.0 : 0.05;
                             double roadFactor = tile.HasRoadAccess ? 1.0 : 0.1;
 
@@ -992,9 +994,17 @@ namespace TycoonGame.Core
 
                             if (tile.Inventory >= tile.MaxInventory)
                             {
-                                // Spawn a new Scientist!
-                                Employees.Add(new Employee(EmployeeRole.Scientist));
-                                tile.Inventory = 0.0; // Reset progress
+                                 // Spawn scientist: immediately advances active R&D by 150 points
+                                 if (ActiveResearch != null && !ActiveResearch.IsCompleted)
+                                 {
+                                     ActiveResearch.InvestPoints(150.0);
+                                     if (ActiveResearch.IsCompleted)
+                                     {
+                                         UpdatePowerGrid();
+                                         ActiveResearch = null;
+                                     }
+                                 }
+                                 tile.Inventory = 0.0; // Reset progress
                             }
                         }
                     }
@@ -1092,10 +1102,9 @@ namespace TycoonGame.Core
                     Tile tile = Grid[x, y];
                     if (tile.Type == TileType.Retail && tile.Inventory > 0)
                     {
-                        var assignedStaff = Employees.Where(e => e.AssignedX == x && e.AssignedY == y).ToList();
-                        if (assignedStaff.Count > 0)
+                        if (tile.EmployeeCount > 0)
                         {
-                            double performanceSum = assignedStaff.Sum(e => e.GetPerformanceMultiplier());
+                            double performanceSum = tile.EmployeeCount * tile.GetPerformanceMultiplier();
                             double powerFactor = tile.IsPowered ? 1.0 : 0.05;
                             double roadFactor = tile.HasRoadAccess ? 1.0 : 0.05;
 
@@ -1147,24 +1156,16 @@ namespace TycoonGame.Core
             // Brain Drain check: cut scientist productivity by 40% (0.60 multiplier) if unemployment is high
             double brainDrainMultiplier = Unemployment_Rate >= 0.08 ? 0.60 : 1.0;
 
-            foreach (var employee in Employees)
+            for (int x = 0; x < MapSize; x++)
             {
-                if (employee.AssignedX != -1)
+                for (int y = 0; y < MapSize; y++)
                 {
-                    Tile tile = Grid[employee.AssignedX, employee.AssignedY];
-                    if (tile.Type == TileType.Office)
+                    Tile tile = Grid[x, y];
+                    if (tile.Type == TileType.Office && tile.Level > 0 && tile.EmployeeCount > 0)
                     {
                         double powerFactor = tile.IsPowered ? 1.0 : 0.2;
-                        if (employee.Role == EmployeeRole.Scientist)
-                        {
-                            // Scientists generate at 3x base speed, but are affected by Brain Drain
-                            generatedResearchPoints += 3.0 * employee.GetPerformanceMultiplier() * powerFactor * brainDrainMultiplier;
-                        }
-                        else
-                        {
-                            // Normal workers generate at 1x base speed
-                            generatedResearchPoints += 1.0 * employee.GetPerformanceMultiplier() * powerFactor;
-                        }
+                        // Hired employees in powered offices generate 1.5 base RP/hr each, scaled by performance & brain drain
+                        generatedResearchPoints += tile.EmployeeCount * tile.GetPerformanceMultiplier() * powerFactor * brainDrainMultiplier * 1.5;
                     }
                 }
             }
@@ -1312,7 +1313,11 @@ namespace TycoonGame.Core
                             LandValue = t.LandValue,
                             TrafficIndex = t.TrafficIndex,
                             RetailPrice = t.RetailPrice,
-                            DepreciatedValue = t.DepreciatedValue
+                            DepreciatedValue = t.DepreciatedValue,
+                            EmployeeCount = t.EmployeeCount,
+                            TrainingBudgetPerHour = t.TrainingBudgetPerHour,
+                            SkillLevel = t.SkillLevel,
+                            Morale = t.Morale
                         });
                     }
                 }
@@ -1397,6 +1402,10 @@ namespace TycoonGame.Core
                 t.TrafficIndex = tData.TrafficIndex;
                 t.RetailPrice = tData.RetailPrice;
                 t.DepreciatedValue = tData.DepreciatedValue;
+                t.EmployeeCount = tData.EmployeeCount;
+                t.TrainingBudgetPerHour = tData.TrainingBudgetPerHour;
+                t.SkillLevel = tData.SkillLevel > 0 ? tData.SkillLevel : 0.1;
+                t.Morale = tData.Morale > 0 ? tData.Morale : 0.8;
             }
 
             // Restore employees
