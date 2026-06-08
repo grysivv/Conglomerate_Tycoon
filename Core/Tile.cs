@@ -32,6 +32,7 @@ namespace TycoonGame.Core
 
         // Step 4: Infrastructure & Supply Chain
         public double RetailPrice { get; set; } // Store-specific selling price
+        public double DepreciatedValue { get; set; }
 
         public Tile(int x, int y)
         {
@@ -53,6 +54,7 @@ namespace TycoonGame.Core
             LandValue = 0m;
             TrafficIndex = 0.0;
             RetailPrice = 0.0;
+            DepreciatedValue = 0.0;
         }
 
         public void ResetToGrass()
@@ -71,6 +73,7 @@ namespace TycoonGame.Core
             HistoricalEarnings = 0;
             LastDayEarnings = 0;
             RetailPrice = 0.0;
+            DepreciatedValue = 0.0;
             // Note: We retain LandValue and base TrafficIndex so the geography is static
         }
 
@@ -156,6 +159,7 @@ namespace TycoonGame.Core
                     ResetToGrass();
                     break;
             }
+            DepreciatedValue = GetAssetValue();
         }
 
         public void Upgrade()
@@ -174,6 +178,18 @@ namespace TycoonGame.Core
             {
                 MaxInventory = (int)(MaxInventory * 1.5); // 50% storage/occupancy capacity increase
             }
+
+            double upgradeCost = Type switch
+            {
+                TileType.Office => 24000.0,
+                TileType.Factory => 48000.0,
+                TileType.Retail => 32000.0,
+                TileType.PowerPlant => 40000.0,
+                TileType.Apartment => 40000.0,
+                TileType.University => 60000.0,
+                _ => 0.0
+            };
+            DepreciatedValue += upgradeCost;
         }
 
         public double GetPowerConsumption()

@@ -7,20 +7,28 @@ namespace TycoonGame.Core
     public class FinancialRecord
     {
         public DateTime Timestamp { get; }
-        public double Revenue { get; }
+        public double RetailRevenue { get; }
+        public double ApartmentRevenue { get; }
+        public double OfficeRevenue { get; }
         public double Wages { get; }
-        public double Maintenance { get; }
+        public double BaseMaintenance { get; }
+        public double LandTaxes { get; }
         public double Logistics { get; }
         public double Interest { get; }
         public double TaxesPaid { get; }
-        public double NetProfit => Revenue - (Wages + Maintenance + Logistics + Interest + TaxesPaid);
 
-        public FinancialRecord(DateTime timestamp, double revenue, double wages, double maintenance, double logistics, double interest, double taxesPaid)
+        public double Revenue => RetailRevenue + ApartmentRevenue + OfficeRevenue;
+        public double NetProfit => Revenue - (Wages + BaseMaintenance + LandTaxes + Logistics + Interest + TaxesPaid);
+
+        public FinancialRecord(DateTime timestamp, double retailRev, double apartmentRev, double officeRev, double wages, double baseMaint, double landTaxes, double logistics, double interest, double taxesPaid)
         {
             Timestamp = timestamp;
-            Revenue = revenue;
+            RetailRevenue = retailRev;
+            ApartmentRevenue = apartmentRev;
+            OfficeRevenue = officeRev;
             Wages = wages;
-            Maintenance = maintenance;
+            BaseMaintenance = baseMaint;
+            LandTaxes = landTaxes;
             Logistics = logistics;
             Interest = interest;
             TaxesPaid = taxesPaid;
@@ -31,21 +39,64 @@ namespace TycoonGame.Core
     {
         public double Cash { get; set; }
         public double LoanBalance { get; set; }
-        public double InterestRate { get; set; } // Annualized rate, dynamically set by game engine
+        public double InterestRate { get; set; } // Annualized benchmark rate, set by game engine
         public double TaxRate { get; } // Corporate tax rate, e.g. 0.20 for 20%
         public double MaxLoanLimit => 1000000.0; // Clamped at $1,000,000 max borrowing limit
 
-        // Current Hour Tickers
-        public double CurrentHourRevenue { get; set; }
-        public double CurrentHourWages { get; set; }
-        public double CurrentHourMaintenance { get; set; }
-        public double CurrentHourLogistics { get; set; }
-        public double CurrentHourInterest => (LoanBalance * (InterestRate / (365.0 * 24.0))); // Hourly portion of annual interest
+        // Cached Fields for high-performance UI retrieval (Step 7)
+        public double CachedPropertyAssetValuation { get; set; }
+        public double CachedTotalInventoryValuation { get; set; }
+        public double CachedBookValue { get; set; }
+        public double CachedAccruedInterest { get; set; }
 
-        // Daily accumulator (for tax calculation and reports)
-        public double DailyRevenueAccumulator { get; set; }
-        public double DailyExpenseAccumulator { get; set; }
+        // Granular Current Hour Tickers
+        public double CurrentHourRetailRevenue { get; set; }
+        public double CurrentHourApartmentRevenue { get; set; }
+        public double CurrentHourOfficeRevenue { get; set; }
+        public double CurrentHourWages { get; set; }
+        public double CurrentHourBaseMaintenance { get; set; }
+        public double CurrentHourLandTaxes { get; set; }
+        public double CurrentHourFreightCost { get; set; }
+
+        // Legacy compatibility properties
+        public double CurrentHourRevenue 
+        { 
+            get => CurrentHourRetailRevenue + CurrentHourApartmentRevenue + CurrentHourOfficeRevenue; 
+            set => CurrentHourRetailRevenue = value; 
+        }
+        public double CurrentHourMaintenance 
+        { 
+            get => CurrentHourBaseMaintenance + CurrentHourLandTaxes; 
+            set => CurrentHourBaseMaintenance = value; 
+        }
+        public double CurrentHourLogistics 
+        { 
+            get => CurrentHourFreightCost; 
+            set => CurrentHourFreightCost = value; 
+        }
+
+        public double CurrentHourInterest
+        {
+            get
+            {
+                double markup = GetLendingMarkup();
+                return LoanBalance * ((InterestRate + markup) / (365.0 * 24.0));
+            }
+        }
+
+        // Daily accumulators (for tax calculation and daily historical ledger)
+        public double DailyRetailRevenue { get; set; }
+        public double DailyApartmentRevenue { get; set; }
+        public double DailyOfficeRevenue { get; set; }
+        public double DailyWages { get; set; }
+        public double DailyBaseMaintenance { get; set; }
+        public double DailyLandTaxes { get; set; }
+        public double DailyLogistics { get; set; }
+        public double DailyInterest { get; set; }
         public double DailyTaxesPaid { get; set; }
+        
+        public double DailyRevenueAccumulator => DailyRetailRevenue + DailyApartmentRevenue + DailyOfficeRevenue;
+        public double DailyExpenseAccumulator => DailyWages + DailyBaseMaintenance + DailyLandTaxes + DailyLogistics + DailyInterest;
         
         // History ledger for UI graphs and spreadsheets
         public List<FinancialRecord> FinancialHistory { get; }
@@ -77,13 +128,27 @@ namespace TycoonGame.Core
             InterestRate = 0.06; // 6% annual interest
             TaxRate = 0.20; // 20% corporate tax
             
-            CurrentHourRevenue = 0;
-            CurrentHourWages = 0;
-            CurrentHourMaintenance = 0;
-            CurrentHourLogistics = 0;
+            CachedPropertyAssetValuation = 0.0;
+            CachedTotalInventoryValuation = 0.0;
+            CachedBookValue = 250000.0;
+            CachedAccruedInterest = 0.0;
 
-            DailyRevenueAccumulator = 0;
-            DailyExpenseAccumulator = 0;
+            CurrentHourRetailRevenue = 0;
+            CurrentHourApartmentRevenue = 0;
+            CurrentHourOfficeRevenue = 0;
+            CurrentHourWages = 0;
+            CurrentHourBaseMaintenance = 0;
+            CurrentHourLandTaxes = 0;
+            CurrentHourFreightCost = 0;
+
+            DailyRetailRevenue = 0;
+            DailyApartmentRevenue = 0;
+            DailyOfficeRevenue = 0;
+            DailyWages = 0;
+            DailyBaseMaintenance = 0;
+            DailyLandTaxes = 0;
+            DailyLogistics = 0;
+            DailyInterest = 0;
             DailyTaxesPaid = 0;
             
             FinancialHistory = new List<FinancialRecord>();
@@ -104,6 +169,54 @@ namespace TycoonGame.Core
             AiCash = 500000.0; // AI competitor starts with cash
             AiNetIncome = 40000.0;
             AiBookValue = 600000.0;
+        }
+
+        public string GetCreditRating()
+        {
+            double debt = LoanBalance;
+            double cash = Cash;
+            double netIncome = GetTrailingMonthlyNetIncome();
+
+            if (debt <= 0) return "AAA";
+
+            double cashToDebt = cash / debt;
+            
+            int score = 0;
+            if (cashToDebt > 1.5) score += 4;
+            else if (cashToDebt > 0.8) score += 3;
+            else if (cashToDebt > 0.3) score += 2;
+            else if (cashToDebt > 0.1) score += 1;
+
+            if (netIncome > 100000) score += 4;
+            else if (netIncome > 40000) score += 3;
+            else if (netIncome > 10000) score += 2;
+            else if (netIncome > 0) score += 1;
+
+            return score switch
+            {
+                >= 7 => "A",
+                6 => "B",
+                5 => "C",
+                4 => "D",
+                3 => "E",
+                _ => "F"
+            };
+        }
+
+        public double GetLendingMarkup()
+        {
+            string rating = GetCreditRating();
+            return rating switch
+            {
+                "AAA" => 0.0,
+                "A" => 0.005,  // 0.5%
+                "B" => 0.015,  // 1.5%
+                "C" => 0.030,  // 3.0%
+                "D" => 0.050,  // 5.0%
+                "E" => 0.075,  // 7.5%
+                "F" => 0.100,  // 10.0%
+                _ => 0.10
+            };
         }
 
         public bool BorrowLoan(double amount)
@@ -128,20 +241,32 @@ namespace TycoonGame.Core
         public void ProcessHourlyBilling()
         {
             double hourlyInterest = CurrentHourInterest;
-            double hourlyExpenses = CurrentHourWages + CurrentHourMaintenance + CurrentHourLogistics + hourlyInterest;
-            
+            double hourlyExpenses = CurrentHourWages + CurrentHourBaseMaintenance + CurrentHourLandTaxes + CurrentHourFreightCost + hourlyInterest;
+            double hourlyRevenue = CurrentHourRetailRevenue + CurrentHourApartmentRevenue + CurrentHourOfficeRevenue;
+
             // Subtract expenses and add revenue to active liquid assets
-            Cash += CurrentHourRevenue - hourlyExpenses;
+            Cash += hourlyRevenue - hourlyExpenses;
 
             // Accumulate daily stats
-            DailyRevenueAccumulator += CurrentHourRevenue;
-            DailyExpenseAccumulator += hourlyExpenses;
+            DailyRetailRevenue += CurrentHourRetailRevenue;
+            DailyApartmentRevenue += CurrentHourApartmentRevenue;
+            DailyOfficeRevenue += CurrentHourOfficeRevenue;
+
+            DailyWages += CurrentHourWages;
+            DailyLandTaxes += CurrentHourLandTaxes;
+            DailyBaseMaintenance += CurrentHourBaseMaintenance;
+            DailyLogistics += CurrentHourFreightCost;
+            DailyInterest += hourlyInterest;
+            CachedAccruedInterest += hourlyInterest;
 
             // Reset current hour tickers for next hour cycle
-            CurrentHourRevenue = 0;
+            CurrentHourRetailRevenue = 0;
+            CurrentHourApartmentRevenue = 0;
+            CurrentHourOfficeRevenue = 0;
             CurrentHourWages = 0;
-            CurrentHourMaintenance = 0;
-            CurrentHourLogistics = 0;
+            CurrentHourBaseMaintenance = 0;
+            CurrentHourLandTaxes = 0;
+            CurrentHourFreightCost = 0;
         }
 
         public void CycleDay(DateTime date)
@@ -159,11 +284,14 @@ namespace TycoonGame.Core
             // Create historic record
             FinancialHistory.Add(new FinancialRecord(
                 date,
-                DailyRevenueAccumulator,
-                DailyExpenseAccumulator - CurrentHourInterest, // Total wages, maintenance, logistics
-                0, // Split values are kept inside the accumulator
-                0,
-                CurrentHourInterest * 24, // Estimate interest paid
+                DailyRetailRevenue,
+                DailyApartmentRevenue,
+                DailyOfficeRevenue,
+                DailyWages,
+                DailyBaseMaintenance,
+                DailyLandTaxes,
+                DailyLogistics,
+                DailyInterest,
                 taxesDue
             ));
 
@@ -174,9 +302,16 @@ namespace TycoonGame.Core
             }
 
             // Reset daily counters
-            DailyRevenueAccumulator = 0;
-            DailyExpenseAccumulator = 0;
+            DailyRetailRevenue = 0;
+            DailyApartmentRevenue = 0;
+            DailyOfficeRevenue = 0;
+            DailyWages = 0;
+            DailyLandTaxes = 0;
+            DailyBaseMaintenance = 0;
+            DailyLogistics = 0;
+            DailyInterest = 0;
             DailyTaxesPaid = 0;
+            CachedAccruedInterest = 0.0;
         }
 
         // GPW Stock valuation and trades (Step 3)
@@ -219,6 +354,13 @@ namespace TycoonGame.Core
             double totalEquityValue = 0.50 * peValue + 0.50 * bookValue;
 
             AiStockPrice = Math.Max(0.10, totalEquityValue / AiTotalShares);
+        }
+
+        public void UpdateCachedValues(double totalAssets, double totalInventory)
+        {
+            CachedPropertyAssetValuation = totalAssets;
+            CachedTotalInventoryValuation = totalInventory;
+            CachedBookValue = Cash + totalAssets + totalInventory - LoanBalance;
         }
 
         public void ExecuteAiTakeoverPass(double playerCash, double interestRate, int cyclePhaseInt)

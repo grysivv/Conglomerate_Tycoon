@@ -136,7 +136,7 @@ namespace TycoonGame.Core
             // Initial network calculations
             UpdateRoadAccess();
 
-            // Setup initial stock valuations
+            // Setup initial stock valuations and cached values
             double initialAssetVal = 0;
             for (int x = 0; x < MapSize; x++)
             {
@@ -145,6 +145,7 @@ namespace TycoonGame.Core
                     initialAssetVal += Grid[x, y].GetAssetValue();
                 }
             }
+            Stats.UpdateCachedValues(initialAssetVal, 0.0);
             Stats.UpdatePlayerStockPrice(initialAssetVal);
             Stats.UpdateAiStockPrice();
         }
@@ -717,6 +718,44 @@ namespace TycoonGame.Core
             // Finish hourly ledger payments
             Stats.ProcessHourlyBilling();
 
+            // Step 7: Apply hourly building depreciation
+            for (int x = 0; x < MapSize; x++)
+            {
+                for (int y = 0; y < MapSize; y++)
+                {
+                    Tile tile = Grid[x, y];
+                    if (tile.Type != TileType.Grass && tile.Type != TileType.Road)
+                    {
+                        double origAssetValue = tile.GetAssetValue();
+                        tile.DepreciatedValue = Math.Max(origAssetValue * 0.40, tile.DepreciatedValue - origAssetValue * 0.0001);
+                    }
+                }
+            }
+
+            // Step 7: Perform O(N) grid scan to calculate cached property assets & inventories once per hour
+            double totalPropertyAssets = 0.0;
+            double totalInventoryValue = 0.0;
+            for (int x = 0; x < MapSize; x++)
+            {
+                for (int y = 0; y < MapSize; y++)
+                {
+                    Tile tile = Grid[x, y];
+                    totalPropertyAssets += tile.DepreciatedValue;
+
+                    if (tile.Type == TileType.Factory)
+                    {
+                        totalInventoryValue += tile.Inventory * 10.0; // Wholesale cost basis
+                    }
+                    else if (tile.Type == TileType.Retail)
+                    {
+                        totalInventoryValue += tile.Inventory * 20.0; // Shelf stock cost basis
+                    }
+                }
+            }
+
+            // Update cached statistics
+            Stats.UpdateCachedValues(totalPropertyAssets, totalInventoryValue);
+
             // Check Hostile Takeover Win/Loss Condition
             double playerAiOwnedPct = Stats.PlayerSharesOwnedByAi / Stats.PlayerTotalShares;
             double aiPlayerOwnedPct = Stats.AiSharesOwnedByPlayer / Stats.AiTotalShares;
@@ -797,10 +836,10 @@ namespace TycoonGame.Core
                     if (tile.Level == 0) continue;
 
                     // 1. Add base maintenance upkeep
-                    Stats.CurrentHourMaintenance += tile.MaintenanceCost;
+                    Stats.CurrentHourBaseMaintenance += tile.MaintenanceCost;
 
                     // 2. Add dynamic Land Tax based on location value and building tier (using decimal)
-                    Stats.CurrentHourMaintenance += (double)tile.GetLandTax();
+                    Stats.CurrentHourLandTaxes += (double)tile.GetLandTax();
 
                     if (tile.Type == TileType.Office)
                     {
@@ -813,7 +852,7 @@ namespace TycoonGame.Core
                             
                             double earnings = performanceSum * tile.ProductionRate * tile.Level * powerFactor * roadFactor * officeYieldMultiplier;
                             
-                            Stats.CurrentHourRevenue += earnings;
+                            Stats.CurrentHourOfficeRevenue += earnings;
                             tile.HistoricalEarnings += earnings;
                             tile.LastDayEarnings += earnings;
                         }
@@ -836,7 +875,7 @@ namespace TycoonGame.Core
                             {
                                 // Factory buys raw materials wholesale ($6.00 per unit)
                                 double rawMaterialExpense = actualProduction * 6.00;
-                                Stats.CurrentHourMaintenance += rawMaterialExpense;
+                                Stats.CurrentHourBaseMaintenance += rawMaterialExpense;
                                 
                                 tile.Inventory += actualProduction;
                             }
@@ -871,7 +910,7 @@ namespace TycoonGame.Core
                         decimal collectedRentDec = tenantsDec * rentRateDec;
                         double collectedRent = (double)collectedRentDec;
 
-                        Stats.CurrentHourRevenue += collectedRent;
+                        Stats.CurrentHourApartmentRevenue += collectedRent;
                         tile.HistoricalEarnings += collectedRent;
                         tile.LastDayEarnings += collectedRent;
 
@@ -885,7 +924,7 @@ namespace TycoonGame.Core
                         }
                         decimal actualMaintenanceDec = baseMaintenanceDec * recessionScaleDec;
                         
-                        Stats.CurrentHourMaintenance += (double)(actualMaintenanceDec - baseMaintenanceDec);
+                        Stats.CurrentHourBaseMaintenance += (double)(actualMaintenanceDec - baseMaintenanceDec);
                     }
                     else if (tile.Type == TileType.University)
                     {
@@ -957,7 +996,7 @@ namespace TycoonGame.Core
                         decimal savingsMultiplierDec = (decimal)logisticsSavingsMultiplier;
                         decimal freightCostDec = distDec * qtyDec * costMultiplierDec * savingsMultiplierDec;
 
-                        Stats.CurrentHourLogistics += (double)freightCostDec;
+                        Stats.CurrentHourFreightCost += (double)freightCostDec;
                     }
                 }
                 else
@@ -980,7 +1019,7 @@ namespace TycoonGame.Core
                         decimal savingsMultiplierDec = (decimal)logisticsSavingsMultiplier;
                         decimal freightCostDec = distDec * qtyDec * costMultiplierDec * savingsMultiplierDec;
 
-                        Stats.CurrentHourLogistics += (double)freightCostDec;
+                        Stats.CurrentHourFreightCost += (double)freightCostDec;
 
                         if (spaceNeeded <= 0) break;
                     }
@@ -1036,7 +1075,7 @@ namespace TycoonGame.Core
                                 tile.Inventory -= actualSales;
                                 double salesRevenue = actualSales * tile.RetailPrice;
 
-                                Stats.CurrentHourRevenue += salesRevenue;
+                                Stats.CurrentHourRetailRevenue += salesRevenue;
                                 tile.HistoricalEarnings += salesRevenue;
                                 tile.LastDayEarnings += salesRevenue;
                             }
@@ -1089,14 +1128,8 @@ namespace TycoonGame.Core
 
         private void ExecuteMonthlyStockMarketPass()
         {
-            double totalAssetValue = 0;
-            for (int x = 0; x < MapSize; x++)
-            {
-                for (int y = 0; y < MapSize; y++)
-                {
-                    totalAssetValue += Grid[x, y].GetAssetValue();
-                }
-            }
+            // Pull cached property asset valuation from stats directly (O(1)) instead of grid scan
+            double totalAssetValue = Stats.CachedPropertyAssetValuation;
 
             // Update player financials and stock price
             Stats.UpdatePlayerStockPrice(totalAssetValue);

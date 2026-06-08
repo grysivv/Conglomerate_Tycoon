@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using System.Globalization;
 using TycoonGame.Core;
 
 namespace TycoonGame.UI
@@ -10,29 +11,43 @@ namespace TycoonGame.UI
     {
         private readonly GameEngine engine;
         private ListView financialHistoryView;
-        private Label lblCash;
+
+        // Balance Sheet Controls
+        private Label lblCashVal;
+        private Label lblPropertyVal;
+        private Label lblInventoryVal;
+        private Label lblTotalAssets;
         private Label lblLoanDebt;
-        private Label lblAssetsVal;
-        private Label lblNetWorthVal;
-        
-        private Label lblRevVal;
-        private Label lblWageVal;
-        private Label lblMaintVal;
-        private Label lblLogisticsVal;
-        private Label lblInterestVal;
-        private Label lblTaxVal;
-        private Label lblNetProfitVal;
+        private Label lblAccruedInterest;
+        private Label lblTotalLiabilities;
+        private Label lblBookValue;
+        private Label lblTotalLiabilitiesEquity;
 
-        // Macroeconomic Climate labels
-        private Label lblMacroGdp;
-        private Label lblMacroRates;
-        private Label lblMacroUnemployment;
-        private Label lblMacroCci;
+        // P&L Statement Controls
+        private Label lblPLRetailRev;
+        private Label lblPLApartmentRev;
+        private Label lblPLOfficeRev;
+        private Label lblPLTotalRev;
+        private Label lblPLSalaries;
+        private Label lblPLLandTaxes;
+        private Label lblPLLogistics;
+        private Label lblPLPowerMaint;
+        private Label lblPLTotalOpex;
+        private Label lblPLEbitda;
+        private Label lblPLInterest;
+        private Label lblPLTaxes;
+        private Label lblPLNetProfit;
+        private Label lblPLEbitdaMargin;
+        private Label lblPLNetMargin;
 
+        // Debt & Leverage Controls
+        private Label lblBenchmarkRate;
+        private Label lblRating;
+        private Label lblMarkup;
+        private Label lblEffectiveRate;
+        private Label lblCashToDebt;
         private Button btnBorrow50k;
-        private Button btnBorrow100k;
         private Button btnRepay50k;
-        private Button btnRepay100k;
 
         public AnalyticsWindow(GameEngine gameEngine)
         {
@@ -40,7 +55,6 @@ namespace TycoonGame.UI
             InitializeComponent();
             RefreshFinancialData();
 
-            // Enable Double Buffering to reduce repaint flickering
             EnableDoubleBuffered(this);
             EnableDoubleBuffered(financialHistoryView);
         }
@@ -48,8 +62,8 @@ namespace TycoonGame.UI
         private void InitializeComponent()
         {
             Text = "Corporate Finance & Market Analytics";
-            Size = new Size(880, 580);
-            MinimumSize = new Size(880, 580);
+            Size = new Size(1020, 720);
+            MinimumSize = new Size(1020, 720);
             BackColor = Color.FromArgb(24, 28, 36);
             ForeColor = Color.White;
             Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point);
@@ -57,178 +71,267 @@ namespace TycoonGame.UI
             MaximizeBox = false;
             MinimizeBox = false;
 
-            // Title
+            // Main Grid Layout (2 columns, Header + Middle Grid + Footer button)
+            TableLayoutPanel outerLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 3,
+                Padding = new Padding(15)
+            };
+            outerLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F));  // Header
+            outerLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Middle Content Panel
+            outerLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F));  // Close Button Footer
+            Controls.Add(outerLayout);
+
+            // 1. Header Panel
             Label lblTitle = new Label
             {
-                Text = "Corporate Financial Center",
+                Text = "RACHUNKI I ANALIZY FINANSOWE PRZEDSIĘBIORSTWA",
                 Font = new Font("Segoe UI", 16F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(80, 140, 200),
-                Location = new Point(20, 15),
-                Size = new Size(400, 35),
-                AutoSize = true
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft
             };
-            Controls.Add(lblTitle);
+            outerLayout.Controls.Add(lblTitle, 0, 0);
 
-            // Left Panel: Balance Sheet & Income Statement
+            // 2. Middle Content Grid (2 Columns, 2 Rows)
+            TableLayoutPanel contentGrid = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 2,
+                Margin = new Padding(0)
+            };
+            contentGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            contentGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            contentGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 40F)); // Balance Sheet & Debt Desk
+            contentGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 60F)); // P&L Statement & Ledger list
+            outerLayout.Controls.Add(contentGrid, 0, 1);
+
+            // 2A. Balance Sheet Group Box (Row 0, Col 0)
             GroupBox grpBalanceSheet = new GroupBox
             {
-                Text = "Corporate Balance Sheet",
-                Location = new Point(20, 60),
-                Size = new Size(400, 150),
+                Text = "BILANS STANU MAJĄTKOWEGO (BALANCE SHEET)",
+                Dock = DockStyle.Fill,
                 ForeColor = Color.FromArgb(170, 175, 190),
-                FlatStyle = FlatStyle.Flat
+                FlatStyle = FlatStyle.Flat,
+                Margin = new Padding(5)
             };
+            contentGrid.Controls.Add(grpBalanceSheet, 0, 0);
 
-            lblCash = new Label { Location = new Point(15, 25), Size = new Size(370, 20), ForeColor = Color.White, Text = "Liquid Cash Balance: $0.00" };
-            lblLoanDebt = new Label { Location = new Point(15, 50), Size = new Size(370, 20), ForeColor = Color.White, Text = "Outstanding Liabilities (Loan): $0.00" };
-            lblAssetsVal = new Label { Location = new Point(15, 75), Size = new Size(370, 20), ForeColor = Color.White, Text = "Property & Equipment Assets: $0.00" };
-            lblNetWorthVal = new Label 
-            { 
-                Location = new Point(15, 105), 
-                Size = new Size(370, 25), 
-                ForeColor = Color.FromArgb(80, 200, 120), 
-                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
-                Text = "Net Corporate Worth: $0.00" 
-            };
-
-            grpBalanceSheet.Controls.Add(lblCash);
-            grpBalanceSheet.Controls.Add(lblLoanDebt);
-            grpBalanceSheet.Controls.Add(lblAssetsVal);
-            grpBalanceSheet.Controls.Add(lblNetWorthVal);
-            Controls.Add(grpBalanceSheet);
-
-            // Group: Daily Income Statement
-            GroupBox grpIncome = new GroupBox
+            TableLayoutPanel bsTable = new TableLayoutPanel
             {
-                Text = "Daily Income Statement (Est.)",
-                Location = new Point(20, 225),
-                Size = new Size(400, 300),
-                ForeColor = Color.FromArgb(170, 175, 190),
-                FlatStyle = FlatStyle.Flat
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                Padding = new Padding(5)
             };
+            bsTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F)); // Assets column
+            bsTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F)); // Liabilities + Equity column
+            grpBalanceSheet.Controls.Add(bsTable);
 
-            int xLabel = 15, xVal = 220, yStart = 30, yDiff = 30;
+            // Assets Panel
+            FlowLayoutPanel pnlAssets = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+            pnlAssets.Controls.Add(new Label { Text = "AKTYWA (ASSETS)", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(80, 140, 200), Size = new Size(180, 18) });
+            
+            lblCashVal = new Label { Text = "Środki pieniężne: $0.00", ForeColor = Color.White, Size = new Size(180, 18) };
+            lblPropertyVal = new Label { Text = "Nieruchomości: $0.00", ForeColor = Color.White, Size = new Size(180, 18) };
+            lblInventoryVal = new Label { Text = "Zapasy: $0.00", ForeColor = Color.White, Size = new Size(180, 18) };
+            lblTotalAssets = new Label { Text = "SUMA AKTYWÓW: $0.00", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(100, 240, 140), Size = new Size(180, 22) };
 
-            // Labels
-            grpIncome.Controls.Add(new Label { Text = "Revenue (Sales/Contracts):", Location = new Point(xLabel, yStart), Size = new Size(200, 20), ForeColor = Color.White });
-            lblRevVal = new Label { Text = "$0.00", Location = new Point(xVal, yStart), Size = new Size(160, 20), ForeColor = Color.FromArgb(100, 240, 140), Font = new Font("Segoe UI", 9F, FontStyle.Bold) };
-            grpIncome.Controls.Add(lblRevVal);
+            pnlAssets.Controls.Add(lblCashVal);
+            pnlAssets.Controls.Add(lblPropertyVal);
+            pnlAssets.Controls.Add(lblInventoryVal);
+            pnlAssets.Controls.Add(new Label { Size = new Size(180, 1), BorderStyle = BorderStyle.FixedSingle, Margin = new Padding(0, 5, 0, 5) });
+            pnlAssets.Controls.Add(lblTotalAssets);
+            bsTable.Controls.Add(pnlAssets, 0, 0);
 
-            grpIncome.Controls.Add(new Label { Text = "Operating Wages Expense:", Location = new Point(xLabel, yStart + yDiff), Size = new Size(200, 20), ForeColor = Color.White });
-            lblWageVal = new Label { Text = "$0.00", Location = new Point(xVal, yStart + yDiff), Size = new Size(160, 20), ForeColor = Color.FromArgb(240, 100, 100) };
-            grpIncome.Controls.Add(lblWageVal);
+            // Liabilities & Equity Panel
+            FlowLayoutPanel pnlLiabilities = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+            pnlLiabilities.Controls.Add(new Label { Text = "PASYWA (LIABILITIES & EQUITY)", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(80, 140, 200), Size = new Size(180, 18) });
 
-            grpIncome.Controls.Add(new Label { Text = "Building Maintenance:", Location = new Point(xLabel, yStart + 2 * yDiff), Size = new Size(200, 20), ForeColor = Color.White });
-            lblMaintVal = new Label { Text = "$0.00", Location = new Point(xVal, yStart + 2 * yDiff), Size = new Size(160, 20), ForeColor = Color.FromArgb(240, 100, 100) };
-            grpIncome.Controls.Add(lblMaintVal);
+            lblLoanDebt = new Label { Text = "Zadłużenie kredytowe: $0.00", ForeColor = Color.White, Size = new Size(180, 18) };
+            lblAccruedInterest = new Label { Text = "Naliczone odsetki: $0.00", ForeColor = Color.White, Size = new Size(180, 18) };
+            lblTotalLiabilities = new Label { Text = "Suma zobowiązań: $0.00", ForeColor = Color.White, Size = new Size(180, 18) };
+            lblBookValue = new Label { Text = "Kapitał własny (Book Value): $0.00", ForeColor = Color.FromArgb(140, 200, 250), Size = new Size(180, 18) };
+            lblTotalLiabilitiesEquity = new Label { Text = "SUMA PASYWÓW: $0.00", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(100, 240, 140), Size = new Size(180, 22) };
 
-            grpIncome.Controls.Add(new Label { Text = "Logistics Shipping Costs:", Location = new Point(xLabel, yStart + 3 * yDiff), Size = new Size(200, 20), ForeColor = Color.White });
-            lblLogisticsVal = new Label { Text = "$0.00", Location = new Point(xVal, yStart + 3 * yDiff), Size = new Size(160, 20), ForeColor = Color.FromArgb(240, 100, 100) };
-            grpIncome.Controls.Add(lblLogisticsVal);
+            pnlLiabilities.Controls.Add(lblLoanDebt);
+            pnlLiabilities.Controls.Add(lblAccruedInterest);
+            pnlLiabilities.Controls.Add(lblTotalLiabilities);
+            pnlLiabilities.Controls.Add(lblBookValue);
+            pnlLiabilities.Controls.Add(new Label { Size = new Size(180, 1), BorderStyle = BorderStyle.FixedSingle, Margin = new Padding(0, 5, 0, 5) });
+            pnlLiabilities.Controls.Add(lblTotalLiabilitiesEquity);
+            bsTable.Controls.Add(pnlLiabilities, 1, 0);
 
-            grpIncome.Controls.Add(new Label { Text = "Interest Charge (Dynamic APR):", Location = new Point(xLabel, yStart + 4 * yDiff), Size = new Size(200, 20), ForeColor = Color.White });
-            lblInterestVal = new Label { Text = "$0.00", Location = new Point(xVal, yStart + 4 * yDiff), Size = new Size(160, 20), ForeColor = Color.FromArgb(240, 100, 100) };
-            grpIncome.Controls.Add(lblInterestVal);
 
-            grpIncome.Controls.Add(new Label { Text = "Corporate Taxes (20%):", Location = new Point(xLabel, yStart + 5 * yDiff), Size = new Size(200, 20), ForeColor = Color.White });
-            lblTaxVal = new Label { Text = "$0.00", Location = new Point(xVal, yStart + 5 * yDiff), Size = new Size(160, 20), ForeColor = Color.FromArgb(240, 100, 100) };
-            grpIncome.Controls.Add(lblTaxVal);
-
-            // Divider Line
-            Label lblDivider = new Label { Location = new Point(15, yStart + 6 * yDiff - 10), Size = new Size(370, 2), BackColor = Color.FromArgb(48, 56, 70), BorderStyle = BorderStyle.Fixed3D };
-            grpIncome.Controls.Add(lblDivider);
-
-            grpIncome.Controls.Add(new Label { Text = "Net Operating Income:", Location = new Point(xLabel, yStart + 6 * yDiff), Size = new Size(200, 20), ForeColor = Color.White, Font = new Font("Segoe UI", 10F, FontStyle.Bold) });
-            lblNetProfitVal = new Label { Text = "$0.00", Location = new Point(xVal, yStart + 6 * yDiff), Size = new Size(160, 20), Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
-            grpIncome.Controls.Add(lblNetProfitVal);
-
-            Controls.Add(grpIncome);
-
-            // Right Panel: Loan Manager & Macro Report
-            GroupBox grpBank = new GroupBox
+            // 2B. Debt & Leverage Group Box (Row 0, Col 1)
+            GroupBox grpDebtDesk = new GroupBox
             {
-                Text = "Corporate Bank Loan Manager",
-                Location = new Point(445, 60),
-                Size = new Size(400, 115),
+                Text = "ZARZĄDZANIE ZADŁUŻENIEM (DEBT & LEVERAGE DESK)",
+                Dock = DockStyle.Fill,
                 ForeColor = Color.FromArgb(170, 175, 190),
-                FlatStyle = FlatStyle.Flat
+                FlatStyle = FlatStyle.Flat,
+                Margin = new Padding(5)
             };
+            contentGrid.Controls.Add(grpDebtDesk, 1, 0);
 
-            btnBorrow50k = CreateStyledButton("Borrow $50K", new Point(15, 25), new Size(175, 30));
+            TableLayoutPanel debtLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                Padding = new Padding(5)
+            };
+            debtLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55F));
+            debtLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
+            grpDebtDesk.Controls.Add(debtLayout);
+
+            // Left info panel
+            FlowLayoutPanel pnlDebtInfo = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+            lblBenchmarkRate = new Label { Text = "Stopa referencyjna banku centralnego: 0.00%", ForeColor = Color.White, Size = new Size(240, 18) };
+            lblRating = new Label { Text = "Ocena wiarygodności kredytowej: A", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(100, 240, 140), Size = new Size(240, 18) };
+            lblMarkup = new Label { Text = "Marża bankowa (ryzyko kredytowe): +0.00%", ForeColor = Color.White, Size = new Size(240, 18) };
+            lblEffectiveRate = new Label { Text = "Efektywne oprocentowanie (APR): 0.00%", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.White, Size = new Size(240, 18) };
+            lblCashToDebt = new Label { Text = "Wskaźnik pokrycia długu (Cash-to-Debt): 0.00", ForeColor = Color.White, Size = new Size(240, 18) };
+
+            pnlDebtInfo.Controls.Add(lblBenchmarkRate);
+            pnlDebtInfo.Controls.Add(lblRating);
+            pnlDebtInfo.Controls.Add(lblMarkup);
+            pnlDebtInfo.Controls.Add(lblEffectiveRate);
+            pnlDebtInfo.Controls.Add(lblCashToDebt);
+            debtLayout.Controls.Add(pnlDebtInfo, 0, 0);
+
+            // Right action buttons panel
+            FlowLayoutPanel pnlDebtActions = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(5, 10, 5, 5) };
+            btnBorrow50k = CreateStyledButton("Zaciągnij Kredyt $50,000", new Point(0, 0), new Size(160, 32));
             btnBorrow50k.Click += (s, e) => HandleLoanBorrow(50000.0);
 
-            btnRepay50k = CreateStyledButton("Repay $50K", new Point(210, 25), new Size(175, 30));
+            btnRepay50k = CreateStyledButton("Spłać Kredyt $50,000", new Point(0, 0), new Size(160, 32));
             btnRepay50k.Click += (s, e) => HandleLoanRepay(50000.0);
 
-            btnBorrow100k = CreateStyledButton("Borrow $100K", new Point(15, 65), new Size(175, 30));
-            btnBorrow100k.Click += (s, e) => HandleLoanBorrow(100000.0);
+            pnlDebtActions.Controls.Add(btnBorrow50k);
+            pnlDebtActions.Controls.Add(new Label { Height = 10 });
+            pnlDebtActions.Controls.Add(btnRepay50k);
+            debtLayout.Controls.Add(pnlDebtActions, 1, 0);
 
-            btnRepay100k = CreateStyledButton("Repay $100K", new Point(210, 65), new Size(175, 30));
-            btnRepay100k.Click += (s, e) => HandleLoanRepay(100000.0);
 
-            grpBank.Controls.Add(btnBorrow50k);
-            grpBank.Controls.Add(btnBorrow100k);
-            grpBank.Controls.Add(btnRepay50k);
-            grpBank.Controls.Add(btnRepay100k);
-            Controls.Add(grpBank);
-
-            // Group: Macroeconomic Report Card
-            GroupBox grpMacro = new GroupBox
+            // 2C. Profit & Loss Group Box (Row 1, Col 0)
+            GroupBox grpPLStatement = new GroupBox
             {
-                Text = "Macroeconomic Climate Indicators",
-                Location = new Point(445, 185),
-                Size = new Size(400, 115),
+                Text = "RACHUNEK ZYSKÓW I STRAT (ROLLING MONTHLY P&L)",
+                Dock = DockStyle.Fill,
                 ForeColor = Color.FromArgb(170, 175, 190),
-                FlatStyle = FlatStyle.Flat
+                FlatStyle = FlatStyle.Flat,
+                Margin = new Padding(5)
             };
+            contentGrid.Controls.Add(grpPLStatement, 0, 1);
 
-            lblMacroGdp = new Label { Location = new Point(15, 22), Size = new Size(370, 18), ForeColor = Color.White, Font = new Font("Segoe UI", 9F, FontStyle.Bold) };
-            lblMacroRates = new Label { Location = new Point(15, 42), Size = new Size(370, 18), ForeColor = Color.White };
-            lblMacroUnemployment = new Label { Location = new Point(15, 62), Size = new Size(370, 18), ForeColor = Color.White };
-            lblMacroCci = new Label { Location = new Point(15, 82), Size = new Size(370, 18), ForeColor = Color.White };
-
-            grpMacro.Controls.Add(lblMacroGdp);
-            grpMacro.Controls.Add(lblMacroRates);
-            grpMacro.Controls.Add(lblMacroUnemployment);
-            grpMacro.Controls.Add(lblMacroCci);
-            Controls.Add(grpMacro);
-
-            // Financial Statements listview
-            Label lblHist = new Label
+            TableLayoutPanel plGrid = new TableLayoutPanel
             {
-                Text = "Historical Daily Ledger Statements",
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(170, 175, 190),
-                Location = new Point(445, 310),
-                Size = new Size(300, 20),
-                AutoSize = true
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 8,
+                Padding = new Padding(5)
             };
-            Controls.Add(lblHist);
+            plGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55F));
+            plGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
+            grpPLStatement.Controls.Add(plGrid);
+
+            int fontWidth = 240;
+
+            // Row 0: Revenues
+            plGrid.Controls.Add(new Label { Text = "PRZYCHODY OPERACYJNE (OPERATING REVENUE)", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(80, 140, 200), Size = new Size(fontWidth, 18) }, 0, 0);
+            
+            FlowLayoutPanel pnlRevenues = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+            lblPLRetailRev = new Label { Text = "Sprzedaż detaliczna (Retail): $0.00", ForeColor = Color.White, Size = new Size(fontWidth, 16) };
+            lblPLApartmentRev = new Label { Text = "Wynajem mieszkań (Apartment): $0.00", ForeColor = Color.White, Size = new Size(fontWidth, 16) };
+            lblPLOfficeRev = new Label { Text = "Usługi biurowe (Office Consulting): $0.00", ForeColor = Color.White, Size = new Size(fontWidth, 16) };
+            lblPLTotalRev = new Label { Text = "Suma przychodów: $0.00", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(100, 240, 140), Size = new Size(fontWidth, 18) };
+            pnlRevenues.Controls.Add(lblPLRetailRev);
+            pnlRevenues.Controls.Add(lblPLApartmentRev);
+            pnlRevenues.Controls.Add(lblPLOfficeRev);
+            pnlRevenues.Controls.Add(lblPLTotalRev);
+            plGrid.Controls.Add(pnlRevenues, 0, 1);
+            plGrid.SetColumnSpan(pnlRevenues, 2);
+
+            // Row 2: OPEX
+            plGrid.Controls.Add(new Label { Text = "KOSZTY OPERACYJNE (OPERATIONAL EXPENSES - OPEX)", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(80, 140, 200), Size = new Size(fontWidth, 18) }, 0, 2);
+
+            FlowLayoutPanel pnlOpex = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+            lblPLSalaries = new Label { Text = "Wynagrodzenia personelu (Wages): $0.00", ForeColor = Color.White, Size = new Size(fontWidth, 16) };
+            lblPLLandTaxes = new Label { Text = "Podatki gruntowe (Land Taxes): $0.00", ForeColor = Color.White, Size = new Size(fontWidth, 16) };
+            lblPLLogistics = new Label { Text = "Koszty spedycji i logistyki (Freight Logistics): $0.00", ForeColor = Color.White, Size = new Size(fontWidth, 16) };
+            lblPLPowerMaint = new Label { Text = "Utrzymanie sieci i energii (Infrastructure Power): $0.00", ForeColor = Color.White, Size = new Size(fontWidth, 16) };
+            lblPLTotalOpex = new Label { Text = "Suma kosztów operacyjnych: $0.00", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(240, 100, 100), Size = new Size(fontWidth, 18) };
+            pnlOpex.Controls.Add(lblPLSalaries);
+            pnlOpex.Controls.Add(lblPLLandTaxes);
+            pnlOpex.Controls.Add(lblPLLogistics);
+            pnlOpex.Controls.Add(lblPLPowerMaint);
+            pnlOpex.Controls.Add(lblPLTotalOpex);
+            plGrid.Controls.Add(pnlOpex, 0, 3);
+            plGrid.SetColumnSpan(pnlOpex, 2);
+
+            // Row 4: EBITDA
+            lblPLEbitda = new Label { Text = "Monthly EBITDA: $0.00", Font = new Font("Segoe UI", 10F, FontStyle.Bold), ForeColor = Color.FromArgb(140, 200, 250), Size = new Size(240, 20) };
+            plGrid.Controls.Add(lblPLEbitda, 0, 4);
+
+            lblPLEbitdaMargin = new Label { Text = "Marża EBITDA: 0.00%", Font = new Font("Segoe UI", 9F, FontStyle.Regular), ForeColor = Color.White, Size = new Size(180, 20), TextAlign = ContentAlignment.MiddleRight };
+            plGrid.Controls.Add(lblPLEbitdaMargin, 1, 4);
+
+            // Row 5: Interest & Taxes
+            FlowLayoutPanel pnlFinancing = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+            lblPLInterest = new Label { Text = "Odsetki kredytowe: $0.00", ForeColor = Color.White, Size = new Size(220, 18) };
+            lblPLTaxes = new Label { Text = "Podatek dochodowy (CIT): $0.00", ForeColor = Color.White, Size = new Size(220, 18) };
+            pnlFinancing.Controls.Add(lblPLInterest);
+            pnlFinancing.Controls.Add(lblPLTaxes);
+            plGrid.Controls.Add(pnlFinancing, 0, 5);
+            plGrid.SetColumnSpan(pnlFinancing, 2);
+
+            // Row 6: Net Profit
+            lblPLNetProfit = new Label { Text = "Zysk Netto (Net Profit): $0.00", Font = new Font("Segoe UI", 11F, FontStyle.Bold), ForeColor = Color.FromArgb(100, 240, 140), Size = new Size(240, 22) };
+            plGrid.Controls.Add(lblPLNetProfit, 0, 6);
+
+            lblPLNetMargin = new Label { Text = "Rentowność Netto: 0.00%", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.White, Size = new Size(180, 22), TextAlign = ContentAlignment.MiddleRight };
+            plGrid.Controls.Add(lblPLNetMargin, 1, 6);
+
+
+            // 2D. Rejestr Ledger Group Box (Row 1, Col 1)
+            GroupBox grpLedger = new GroupBox
+            {
+                Text = "REJESTR DZIENNYCH WYNIKÓW (HISTORICAL DAILY LEDGER)",
+                Dock = DockStyle.Fill,
+                ForeColor = Color.FromArgb(170, 175, 190),
+                FlatStyle = FlatStyle.Flat,
+                Margin = new Padding(5)
+            };
+            contentGrid.Controls.Add(grpLedger, 1, 1);
 
             financialHistoryView = new ListView
             {
-                Location = new Point(445, 330),
-                Size = new Size(400, 155),
+                Dock = DockStyle.Fill,
                 View = View.Details,
                 FullRowSelect = true,
                 BackColor = Color.FromArgb(32, 38, 48),
                 ForeColor = Color.White,
                 BorderStyle = BorderStyle.None,
                 HeaderStyle = ColumnHeaderStyle.Nonclickable,
-                OwnerDraw = true
+                OwnerDraw = true,
+                Margin = new Padding(10)
             };
-            financialHistoryView.Columns.Add("Date", 95);
-            financialHistoryView.Columns.Add("Revenue", 95);
-            financialHistoryView.Columns.Add("Expenses", 95);
-            financialHistoryView.Columns.Add("Net profit", 95);
-
+            financialHistoryView.Columns.Add("Date", 110);
+            financialHistoryView.Columns.Add("Revenue", 110);
+            financialHistoryView.Columns.Add("Expenses", 110);
+            financialHistoryView.Columns.Add("Net profit", 110);
             SetupCustomDrawing(financialHistoryView);
-            Controls.Add(financialHistoryView);
+            grpLedger.Controls.Add(financialHistoryView);
 
-            // Close button
-            Button btnClose = CreateStyledButton("Close Finance Panel", new Point(445, 495), new Size(400, 32));
+            // 3. Footer CLOSE button
+            Button btnClose = CreateStyledButton("Zamknij Panel Finansowy", new Point(0, 0), new Size(250, 32));
+            btnClose.Anchor = AnchorStyles.None;
             btnClose.Click += (s, e) => Close();
-            Controls.Add(btnClose);
+            outerLayout.Controls.Add(btnClose, 0, 2);
         }
 
         private Button CreateStyledButton(string text, Point loc, Size sz)
@@ -241,7 +344,8 @@ namespace TycoonGame.UI
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(48, 56, 70),
                 ForeColor = Color.White,
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold)
             };
             btn.FlatAppearance.BorderSize = 0;
             btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(64, 100, 150);
@@ -250,7 +354,6 @@ namespace TycoonGame.UI
 
         private void SetupCustomDrawing(ListView lv)
         {
-            lv.OwnerDraw = true;
             lv.DrawColumnHeader += (s, e) =>
             {
                 using Brush brush = new SolidBrush(Color.FromArgb(48, 56, 70));
@@ -266,7 +369,9 @@ namespace TycoonGame.UI
                 Color itemTextColor = Color.White;
                 if (e.ColumnIndex == 3) // Net profit
                 {
-                    double netVal = double.Parse(e.SubItem.Text.Replace("$", "").Replace(",", "").Trim());
+                    double netVal = 0.0;
+                    string rawText = e.SubItem.Text.Replace("$", "").Replace("zł", "").Replace(",", "").Trim();
+                    double.TryParse(rawText, out netVal);
                     itemTextColor = netVal < 0 ? Color.FromArgb(240, 100, 100) : Color.FromArgb(100, 240, 140);
                 }
 
@@ -276,124 +381,143 @@ namespace TycoonGame.UI
 
         private void RefreshFinancialData()
         {
-            // Update macro report card labels
-            string phaseStr = engine.CyclePhase.ToString();
-            lblMacroGdp.Text = $"GDP Index: {engine.GDP_Index:F1} ({phaseStr})";
-            lblMacroRates.Text = $"Central Bank Rate: {engine.Interest_Rate * 100:F1}% | Inflation: {engine.Inflation_Rate * 100:F1}%";
-            lblMacroUnemployment.Text = $"Labor Market Unemployment: {engine.Unemployment_Rate * 100:F1}%";
-            lblMacroCci.Text = $"Consumer Confidence Index (CCI): {engine.ConsumerConfidenceIndex:F2}";
+            CultureInfo culture = CultureInfo.CurrentCulture;
 
-            // Color code GDP label inside report card based on phase
-            lblMacroGdp.ForeColor = engine.CyclePhase switch
+            // 1. Balance Sheet Values (Aktywa i Pasywa)
+            double cash = engine.Stats.Cash;
+            double propertyAssets = engine.Stats.CachedPropertyAssetValuation;
+            double inventoryVal = engine.Stats.CachedTotalInventoryValuation;
+            double totalAssets = cash + propertyAssets + inventoryVal;
+
+            double loanDebt = engine.Stats.LoanBalance;
+            double accruedInterest = engine.Stats.CachedAccruedInterest;
+            double totalLiabilities = loanDebt + accruedInterest;
+            double bookValue = engine.Stats.CachedBookValue;
+            double totalLiabilitiesEquity = totalLiabilities + bookValue;
+
+            lblCashVal.Text = $"Środki pieniężne (Cash): {cash.ToString("C", culture)}";
+            lblPropertyVal.Text = $"Nieruchomości (Property): {propertyAssets.ToString("C", culture)}";
+            lblInventoryVal.Text = $"Zapasy (Inventory): {inventoryVal.ToString("C", culture)}";
+            lblTotalAssets.Text = $"SUMA AKTYWÓW: {totalAssets.ToString("C", culture)}";
+
+            lblLoanDebt.Text = $"Kredyty bankowe: {loanDebt.ToString("C", culture)}";
+            lblAccruedInterest.Text = $"Naliczone odsetki: {accruedInterest.ToString("C", culture)}";
+            lblTotalLiabilities.Text = $"Suma zobowiązań: {totalLiabilities.ToString("C", culture)}";
+            lblBookValue.Text = $"Wartość księgowa (Equity): {bookValue.ToString("C", culture)}";
+            lblTotalLiabilitiesEquity.Text = $"SUMA PASYWÓW: {totalLiabilitiesEquity.ToString("C", culture)}";
+
+
+            // 2. Debt Desk Values
+            string rating = engine.Stats.GetCreditRating();
+            double benchmark = engine.Interest_Rate;
+            double markup = engine.Stats.GetLendingMarkup();
+            double effectiveRate = benchmark + markup;
+            double cashToDebt = loanDebt > 0 ? cash / loanDebt : 99.9;
+
+            lblBenchmarkRate.Text = $"Benchmark Banku Centralnego: {benchmark.ToString("P2", culture)}";
+            lblRating.Text = $"Ocena Kredytowa (Credit Rating): {rating}";
+            lblRating.ForeColor = rating switch
             {
-                CyclePhase.Boom => Color.FromArgb(100, 240, 140),
-                CyclePhase.Recovery => Color.FromArgb(140, 200, 250),
-                CyclePhase.Slowdown => Color.FromArgb(230, 140, 80),
-                CyclePhase.Recession => Color.FromArgb(240, 100, 100),
-                _ => Color.White
+                "A" => Color.FromArgb(100, 240, 140),
+                "B" => Color.FromArgb(140, 200, 250),
+                "C" => Color.FromArgb(230, 140, 80),
+                _ => Color.FromArgb(240, 100, 100)
             };
+            lblMarkup.Text = $"Marża ryzyka bankowego: +{markup.ToString("P2", culture)}";
+            lblEffectiveRate.Text = $"Efektywne oprocentowanie (APR): {effectiveRate.ToString("P2", culture)}";
+            lblCashToDebt.Text = $"Cash-to-Debt Ratio: {cashToDebt:F2}";
 
-            // Calculate building asset values
-            double assetVal = 0;
-            for (int x = 0; x < GameEngine.MapSize; x++)
-            {
-                for (int y = 0; y < GameEngine.MapSize; y++)
-                {
-                    Tile tile = engine.Grid[x, y];
-                    double buildCost = tile.Type switch
-                    {
-                        TileType.Road => 1000.0,
-                        TileType.Office => 30000.0,
-                        TileType.Factory => 60000.0,
-                        TileType.Retail => 40000.0,
-                        TileType.PowerPlant => 50000.0,
-                        _ => 0
-                    };
-                    assetVal += buildCost;
-
-                    // Add upgrades
-                    if (tile.Level > 1)
-                    {
-                        double upgradeCost = tile.Type switch
-                        {
-                            TileType.Office => 24000.0,
-                            TileType.Factory => 48000.0,
-                            TileType.Retail => 32000.0,
-                            TileType.PowerPlant => 40000.0,
-                            _ => 0
-                        };
-                        assetVal += upgradeCost * (tile.Level - 1);
-                    }
-                }
-            }
-
-            double netWorth = engine.Stats.Cash + assetVal - engine.Stats.LoanBalance;
-
-            lblCash.Text = $"Liquid Cash Balance: ${engine.Stats.Cash:N2}";
-            lblLoanDebt.Text = $"Outstanding Liabilities (Loan): ${engine.Stats.LoanBalance:N2}";
-            lblAssetsVal.Text = $"Property & Equipment Assets: ${assetVal:N2}";
-            lblNetWorthVal.Text = $"Net Corporate Worth: ${netWorth:N2}";
-
-            // Estimate hourly billing times 24 for a daily projection
-            double wageProj = engine.Stats.CurrentHourWages * 24;
-            double maintProj = engine.Stats.CurrentHourMaintenance * 24;
-            double logProj = engine.Stats.CurrentHourLogistics * 24;
-            double intProj = engine.Stats.CurrentHourInterest * 24;
-            
-            // Actually get average revenue based on active building throughput
-            double revProj = 0;
-            for (int x = 0; x < GameEngine.MapSize; x++)
-            {
-                for (int y = 0; y < GameEngine.MapSize; y++)
-                {
-                    Tile tile = engine.Grid[x, y];
-                    if (tile.Type == TileType.Office && tile.EmployeeCount > 0 && tile.IsPowered)
-                    {
-                        double performance = engine.Employees.Where(e => e.AssignedX == x && e.AssignedY == y).Sum(e => e.GetPerformanceMultiplier());
-                        double officeYield = engine.GetActiveEffectMultiplier(ResearchEffect.OfficeYield);
-                        revProj += performance * tile.ProductionRate * tile.Level * officeYield * 24;
-                    }
-                    else if (tile.Type == TileType.Retail && tile.EmployeeCount > 0 && tile.IsPowered && tile.Inventory > 0)
-                    {
-                        double performance = engine.Employees.Where(e => e.AssignedX == x && e.AssignedY == y).Sum(e => e.GetPerformanceMultiplier());
-                        double retailDemand = engine.GetActiveEffectMultiplier(ResearchEffect.RetailDemand);
-                        double marketDemand = (1.0 + (1.0 - engine.PlayerMarketShare) * 0.3) * engine.ConsumerConfidenceIndex;
-                        double cap = performance * tile.SalesRate * tile.Level * retailDemand * marketDemand;
-                        revProj += Math.Min(tile.Inventory, cap) * engine.CurrentMarketPrice * 24;
-                    }
-                }
-            }
-
-            double expenseSumProj = wageProj + maintProj + logProj + intProj;
-            double netProfitProjBeforeTax = revProj - expenseSumProj;
-            double taxProj = netProfitProjBeforeTax > 0 ? netProfitProjBeforeTax * engine.Stats.TaxRate : 0;
-            double netProfitProj = netProfitProjBeforeTax - taxProj;
-
-            lblRevVal.Text = $"${revProj:N2}";
-            lblWageVal.Text = $"-${wageProj:N2}";
-            lblMaintVal.Text = $"-${maintProj:N2}";
-            lblLogisticsVal.Text = $"-${logProj:N2}";
-            lblInterestVal.Text = $"-${intProj:N2}";
-            lblTaxVal.Text = $"-${taxProj:N2}";
-
-            lblNetProfitVal.Text = $"${netProfitProj:N2}";
-            lblNetProfitVal.ForeColor = netProfitProj < 0 ? Color.FromArgb(240, 100, 100) : Color.FromArgb(100, 240, 140);
-
-            // Disable buttons based on loan boundaries
+            // Enable/disable buttons based on loan capacities
             btnBorrow50k.Enabled = (engine.Stats.LoanBalance + 50000.0 <= engine.Stats.MaxLoanLimit);
-            btnBorrow100k.Enabled = (engine.Stats.LoanBalance + 100000.0 <= engine.Stats.MaxLoanLimit);
             btnRepay50k.Enabled = (engine.Stats.LoanBalance >= 50000.0 && engine.Stats.Cash >= 50000.0);
-            btnRepay100k.Enabled = (engine.Stats.LoanBalance >= 100000.0 && engine.Stats.Cash >= 100000.0);
 
-            // Populate Financial History Grid
+
+            // 3. Profit & Loss Statement (P&L rolling sum)
+            double retailRevSum = 0;
+            double apartmentRevSum = 0;
+            double officeRevSum = 0;
+            double wagesSum = 0;
+            double baseMaintSum = 0;
+            double landTaxesSum = 0;
+            double logisticsSum = 0;
+            double interestSum = 0;
+            double taxesPaidSum = 0;
+
+            if (engine.Stats.FinancialHistory.Count == 0)
+            {
+                // Day 1 projection: extrapolate hourly numbers * 24 * 30
+                double scale = 24 * 30;
+                retailRevSum = engine.Stats.CurrentHourRetailRevenue * scale;
+                apartmentRevSum = engine.Stats.CurrentHourApartmentRevenue * scale;
+                officeRevSum = engine.Stats.CurrentHourOfficeRevenue * scale;
+                wagesSum = engine.Stats.CurrentHourWages * scale;
+                baseMaintSum = engine.Stats.CurrentHourBaseMaintenance * scale;
+                landTaxesSum = engine.Stats.CurrentHourLandTaxes * scale;
+                logisticsSum = engine.Stats.CurrentHourFreightCost * scale;
+                interestSum = engine.Stats.CurrentHourInterest * scale;
+                taxesPaidSum = 0;
+
+                if (retailRevSum == 0 && apartmentRevSum == 0 && officeRevSum == 0)
+                {
+                    officeRevSum = 30000.0; // Startup baseline projection
+                }
+            }
+            else
+            {
+                foreach (var record in engine.Stats.FinancialHistory)
+                {
+                    retailRevSum += record.RetailRevenue;
+                    apartmentRevSum += record.ApartmentRevenue;
+                    officeRevSum += record.OfficeRevenue;
+                    wagesSum += record.Wages;
+                    baseMaintSum += record.BaseMaintenance;
+                    landTaxesSum += record.LandTaxes;
+                    logisticsSum += record.Logistics;
+                    interestSum += record.Interest;
+                    taxesPaidSum += record.TaxesPaid;
+                }
+            }
+
+            double totalRev = retailRevSum + apartmentRevSum + officeRevSum;
+            double totalOpex = wagesSum + baseMaintSum + landTaxesSum + logisticsSum;
+            double ebitda = totalRev - totalOpex;
+            double netProfit = ebitda - interestSum - taxesPaidSum;
+
+            double ebitdaMargin = totalRev > 0 ? ebitda / totalRev : 0.0;
+            double netMargin = totalRev > 0 ? netProfit / totalRev : 0.0;
+
+            lblPLRetailRev.Text = $"Sprzedaż detaliczna (Retail): {retailRevSum.ToString("C", culture)}";
+            lblPLApartmentRev.Text = $"Wynajem mieszkań (Apartment): {apartmentRevSum.ToString("C", culture)}";
+            lblPLOfficeRev.Text = $"Usługi biurowe (Office Consulting): {officeRevSum.ToString("C", culture)}";
+            lblPLTotalRev.Text = $"SUMA PRZYCHODÓW OPERACYJNYCH: {totalRev.ToString("C", culture)}";
+
+            lblPLSalaries.Text = $"Wynagrodzenia personelu (Wages): {wagesSum.ToString("C", culture)}";
+            lblPLLandTaxes.Text = $"Podatki gruntowe (Land Taxes): {landTaxesSum.ToString("C", culture)}";
+            lblPLLogistics.Text = $"Koszty spedycji i logistyki: {logisticsSum.ToString("C", culture)}";
+            lblPLPowerMaint.Text = $"Utrzymanie sieci i energii: {baseMaintSum.ToString("C", culture)}";
+            lblPLTotalOpex.Text = $"SUMA KOSZTÓW OPERACYJNYCH (OPEX): {totalOpex.ToString("C", culture)}";
+
+            lblPLEbitda.Text = $"Monthly EBITDA: {ebitda.ToString("C", culture)}";
+            lblPLEbitda.ForeColor = ebitda < 0 ? Color.FromArgb(240, 100, 100) : Color.FromArgb(140, 200, 250);
+            lblPLEbitdaMargin.Text = $"Marża EBITDA: {ebitdaMargin.ToString("P2", culture)}";
+
+            lblPLInterest.Text = $"Odsetki kredytowe: {interestSum.ToString("C", culture)}";
+            lblPLTaxes.Text = $"Podatek dochodowy (CIT): {taxesPaidSum.ToString("C", culture)}";
+
+            lblPLNetProfit.Text = $"Zysk Netto (Net Profit): {netProfit.ToString("C", culture)}";
+            lblPLNetProfit.ForeColor = netProfit < 0 ? Color.FromArgb(240, 100, 100) : Color.FromArgb(100, 240, 140);
+            lblPLNetMargin.Text = $"Rentowność Netto: {netMargin.ToString("P2", culture)}";
+
+
+            // 4. Daily Ledger History Grid
             financialHistoryView.Items.Clear();
             foreach (var record in engine.Stats.FinancialHistory)
             {
                 ListViewItem item = new ListViewItem(record.Timestamp.ToString("MM/dd HH:mm"));
-                item.SubItems.Add($"${record.Revenue:N0}");
+                item.SubItems.Add(record.Revenue.ToString("C0", culture));
                 double totalExpenses = record.Revenue - record.NetProfit;
-                item.SubItems.Add($"${totalExpenses:N0}");
-                item.SubItems.Add($" {record.NetProfit:N0}");
+                item.SubItems.Add(totalExpenses.ToString("C0", culture));
+                item.SubItems.Add(record.NetProfit.ToString("C0", culture));
                 financialHistoryView.Items.Add(item);
             }
         }
