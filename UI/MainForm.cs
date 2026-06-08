@@ -69,8 +69,7 @@ namespace TycoonGame.UI
         private Button btnSpeed2x;
         private Button btnSpeed5x;
         
-        private Button[] buildToolButtons;
-        private BuildTool[] toolTypes;
+        private System.Collections.Generic.Dictionary<BuildTool, Button> toolButtonDict = new System.Collections.Generic.Dictionary<BuildTool, Button>();
 
         public MainForm()
         {
@@ -761,8 +760,8 @@ namespace TycoonGame.UI
                 RowCount = 3,
                 BackColor = Color.FromArgb(24, 28, 36)
             };
-            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 78F)); // MonoGame Panel
-            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22F)); // Sidebar Control Panel
+            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 85F)); // MonoGame Panel
+            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15F)); // Sidebar Control Panel
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F)); // Top Bar
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Middle (Viewport + Sidebar)
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 55F)); // Bottom Bar
@@ -901,73 +900,51 @@ namespace TycoonGame.UI
             };
             mainLayout.Controls.Add(pnlSidebar, 1, 1);
 
-            // Build Toolbox
-            Label lblBuildTitle = new Label { Text = "Construction Toolbelt", Font = new Font("Segoe UI", 10F, FontStyle.Bold), ForeColor = Color.FromArgb(80, 140, 200), Size = new Size(220, 20), Margin = new Padding(0, 5, 0, 5) };
+            // Build Toolbox - Grouped Categories
+            Label lblBuildTitle = new Label { Text = "CONSTRUCTION TOOLBELT", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(80, 140, 200), Size = new Size(160, 20), Margin = new Padding(0, 5, 0, 5) };
             pnlSidebar.Controls.Add(lblBuildTitle);
 
-            toolTypes = new[] 
-            { 
-                BuildTool.Inspect, 
-                BuildTool.BuildRoad, 
-                BuildTool.BuildOffice, 
-                BuildTool.BuildFactory, 
-                BuildTool.BuildRetail, 
-                BuildTool.BuildPowerPlant, 
-                BuildTool.BuildApartment,
-                BuildTool.BuildUniversity,
-                BuildTool.Bulldozer 
-            };
-            
-            string[] toolLabels = new[] 
-            { 
-                "Inspect / Select", 
-                "Asphalt Road ($1K)", 
-                "Office Complex ($30K)", 
-                "Industrial Factory ($60K)", 
-                "Retail Outlet ($40K)", 
-                "Power Plant ($50K)", 
-                "Residential Apartment ($50K)",
-                "Collegiate University ($80K)",
-                "Heavy Bulldozer ($1K)" 
-            };
+            toolButtonDict.Clear();
 
-            buildToolButtons = new Button[toolTypes.Length];
-            for (int i = 0; i < toolTypes.Length; i++)
-            {
-                int index = i;
-                buildToolButtons[i] = new Button
-                {
-                    Text = toolLabels[i],
-                    Size = new Size(220, 30),
-                    FlatStyle = FlatStyle.Flat,
-                    BackColor = Color.FromArgb(48, 56, 70),
-                    ForeColor = Color.White,
-                    Cursor = Cursors.Hand,
-                    Margin = new Padding(0, 2, 0, 2)
-                };
-                buildToolButtons[i].FlatAppearance.BorderSize = 0;
-                buildToolButtons[i].Click += (s, e) => SetActiveTool(toolTypes[index]);
-                pnlSidebar.Controls.Add(buildToolButtons[i]);
-            }
+            AddCategoryHeader(pnlSidebar, "LAND & INFRASTRUCTURE");
+            AddToolButton(pnlSidebar, BuildTool.Inspect, "Inspect / Select");
+            AddToolButton(pnlSidebar, BuildTool.BuyPlot, "Buy Land Plot");
+            AddToolButton(pnlSidebar, BuildTool.BuildRoad, "Asphalt Road ($1K)");
+            AddToolButton(pnlSidebar, BuildTool.BuildPowerPlant, "Power Plant ($50K)");
+
+            AddCategoryHeader(pnlSidebar, "COMMERCIAL");
+            AddToolButton(pnlSidebar, BuildTool.BuildOffice, "Office Complex ($30K)");
+            AddToolButton(pnlSidebar, BuildTool.BuildRetail, "Retail Outlet ($40K)");
+
+            AddCategoryHeader(pnlSidebar, "RESIDENTIAL");
+            AddToolButton(pnlSidebar, BuildTool.BuildApartment, "Apartment ($50K)");
+            AddToolButton(pnlSidebar, BuildTool.BuildUniversity, "University ($80K)");
+
+            AddCategoryHeader(pnlSidebar, "PRODUCTION & RAW");
+            AddToolButton(pnlSidebar, BuildTool.BuildFactory, "Factory ($60K)");
+            AddToolButton(pnlSidebar, BuildTool.BuildFarm, "Rural Farm ($20K)");
+            AddToolButton(pnlSidebar, BuildTool.BuildOilWell, "Oil Well ($35K)");
+            AddToolButton(pnlSidebar, BuildTool.Bulldozer, "Bulldozer ($1K)");
+
             SetActiveTool(BuildTool.Inspect); // Select default
 
             // Divider
-            pnlSidebar.Controls.Add(new Label { Size = new Size(220, 1), BorderStyle = BorderStyle.FixedSingle, Margin = new Padding(0, 5, 0, 5) });
+            pnlSidebar.Controls.Add(new Label { Size = new Size(160, 1), BorderStyle = BorderStyle.FixedSingle, Margin = new Padding(0, 5, 0, 5) });
 
             // Inspector Details Panel
-            Label lblInspectTitle = new Label { Text = "Selected Tile Details", Font = new Font("Segoe UI", 10F, FontStyle.Bold), ForeColor = Color.FromArgb(80, 140, 200), Size = new Size(220, 20), Margin = new Padding(0, 5, 0, 5) };
+            Label lblInspectTitle = new Label { Text = "SELECTED TILE DETAILS", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(80, 140, 200), Size = new Size(160, 20), Margin = new Padding(0, 5, 0, 5) };
             pnlSidebar.Controls.Add(lblInspectTitle);
 
-            lblSelectedTileCoords = new Label { Text = "Grid Address: None", Size = new Size(220, 18), ForeColor = Color.White };
-            lblSelectedTileType = new Label { Text = "Structure Type: Grass", Size = new Size(220, 18), ForeColor = Color.White };
-            lblSelectedTileLevel = new Label { Text = "Structure Level: 0", Size = new Size(220, 18), ForeColor = Color.White };
-            lblSelectedTileMaint = new Label { Text = "Hourly Upkeep: $0.00", Size = new Size(220, 18), ForeColor = Color.White };
-            lblSelectedTileLandValue = new Label { Text = "Local Land Value: $0.00", Size = new Size(220, 18), ForeColor = Color.White };
-            lblSelectedTileTraffic = new Label { Text = "Foot Traffic Index: 0", Size = new Size(220, 18), ForeColor = Color.White };
-            lblSelectedTilePower = new Label { Text = "Grid Electricity: Offline", Size = new Size(220, 18), ForeColor = Color.White };
-            lblSelectedTileRoad = new Label { Text = "Road Accessibility: No", Size = new Size(220, 18), ForeColor = Color.White };
-            lblSelectedTileInventory = new Label { Text = "Inventory Stocks: 0 / 0", Size = new Size(220, 18), ForeColor = Color.White };
-            lblSelectedTileStaff = new Label { Text = "Employees Assigned: 0 / 0", Size = new Size(220, 18), ForeColor = Color.White };
+            lblSelectedTileCoords = new Label { Text = "Grid Address: None", Size = new Size(160, 18), ForeColor = Color.White };
+            lblSelectedTileType = new Label { Text = "Structure Type: Grass", Size = new Size(160, 18), ForeColor = Color.White };
+            lblSelectedTileLevel = new Label { Text = "Structure Level: 0", Size = new Size(160, 18), ForeColor = Color.White };
+            lblSelectedTileMaint = new Label { Text = "Hourly Upkeep: $0.00", Size = new Size(160, 18), ForeColor = Color.White };
+            lblSelectedTileLandValue = new Label { Text = "Local Land Value: $0.00", Size = new Size(160, 18), ForeColor = Color.White };
+            lblSelectedTileTraffic = new Label { Text = "Foot Traffic Index: 0", Size = new Size(160, 18), ForeColor = Color.White };
+            lblSelectedTilePower = new Label { Text = "Grid Electricity: Offline", Size = new Size(160, 18), ForeColor = Color.White };
+            lblSelectedTileRoad = new Label { Text = "Road Accessibility: No", Size = new Size(160, 18), ForeColor = Color.White };
+            lblSelectedTileInventory = new Label { Text = "Inventory Stocks: 0 / 0", Size = new Size(160, 18), ForeColor = Color.White };
+            lblSelectedTileStaff = new Label { Text = "Employees Assigned: 0 / 0", Size = new Size(160, 32), ForeColor = Color.White };
 
             pnlSidebar.Controls.Add(lblSelectedTileCoords);
             pnlSidebar.Controls.Add(lblSelectedTileType);
@@ -983,13 +960,14 @@ namespace TycoonGame.UI
             btnUpgradeBuilding = new Button
             {
                 Text = "Upgrade Building",
-                Size = new Size(220, 28),
+                Size = new Size(160, 28),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(80, 200, 120),
                 ForeColor = Color.White,
                 Cursor = Cursors.Hand,
                 Visible = false,
-                Margin = new Padding(0, 5, 0, 5)
+                Margin = new Padding(0, 5, 0, 5),
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold)
             };
             btnUpgradeBuilding.FlatAppearance.BorderSize = 0;
             btnUpgradeBuilding.Click += BtnUpgradeBuilding_Click;
@@ -1147,6 +1125,40 @@ namespace TycoonGame.UI
             return btn;
         }
 
+        private void AddCategoryHeader(FlowLayoutPanel panel, string title)
+        {
+            Label lbl = new Label
+            {
+                Text = title,
+                Font = new Font("Segoe UI", 7.5F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(0, 240, 255),
+                BackColor = Color.FromArgb(40, 48, 60),
+                Size = new Size(160, 18),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Margin = new Padding(0, 6, 0, 2)
+            };
+            panel.Controls.Add(lbl);
+        }
+
+        private void AddToolButton(FlowLayoutPanel panel, BuildTool tool, string labelText)
+        {
+            Button btn = new Button
+            {
+                Text = labelText,
+                Size = new Size(160, 26),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(48, 56, 70),
+                ForeColor = Color.White,
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 8F, FontStyle.Regular),
+                Margin = new Padding(0, 1, 0, 1)
+            };
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Click += (s, e) => SetActiveTool(tool);
+            panel.Controls.Add(btn);
+            toolButtonDict[tool] = btn;
+        }
+
         private void SetSimulationSpeed(int speedVal)
         {
             currentSpeedMultiplier = speedVal;
@@ -1169,9 +1181,9 @@ namespace TycoonGame.UI
             if (gamePanel == null) return;
             gamePanel.ActiveTool = tool;
 
-            for (int i = 0; i < toolTypes.Length; i++)
+            foreach (var kvp in toolButtonDict)
             {
-                buildToolButtons[i].BackColor = toolTypes[i] == tool ? Color.FromArgb(80, 140, 200) : Color.FromArgb(48, 56, 70);
+                kvp.Value.BackColor = kvp.Key == tool ? Color.FromArgb(80, 140, 200) : Color.FromArgb(48, 56, 70);
             }
         }
 
@@ -1366,42 +1378,43 @@ namespace TycoonGame.UI
             int ty = tileCoords.Item2;
             Tile tile = engine.Grid[tx, ty];
 
-            SetLabelText(lblSelectedTileCoords, $"Grid Address: [{tx}, {ty}]");
-            SetLabelText(lblSelectedTileType, $"Structure Type: {tile.Type}");
-            SetLabelText(lblSelectedTileLevel, $"Structure Level: {tile.Level}");
-            SetLabelText(lblSelectedTileMaint, $"Hourly Upkeep: ${tile.MaintenanceCost:F2}");
-            SetLabelText(lblSelectedTileLandValue, $"Local Land Value: ${tile.LandValue:N2}");
-            SetLabelText(lblSelectedTileTraffic, $"Foot Traffic Index: {tile.TrafficIndex:F0}");
+            SetLabelText(lblSelectedTileCoords, $"Address: [{tx}, {ty}]");
+            SetLabelText(lblSelectedTileType, $"Type: {tile.Type}");
+            SetLabelText(lblSelectedTileLevel, $"Level: {tile.Level}");
+            SetLabelText(lblSelectedTileMaint, $"Upkeep: ${tile.MaintenanceCost:F0}/hr");
+            SetLabelText(lblSelectedTileLandValue, $"Land Val: ${tile.LandValue:F0}");
+            SetLabelText(lblSelectedTileTraffic, $"Traffic: {tile.TrafficIndex:F0}");
             
-            SetLabelText(lblSelectedTilePower, tile.IsPowered ? "Grid Electricity: Powered" : "Grid Electricity: Offline");
+            SetLabelText(lblSelectedTilePower, tile.IsPowered ? "Power: Online" : "Power: Offline");
             SetLabelForeColor(lblSelectedTilePower, tile.IsPowered ? Color.FromArgb(100, 240, 140) : Color.FromArgb(240, 100, 100));
 
-            SetLabelText(lblSelectedTileRoad, tile.HasRoadAccess ? "Road Accessibility: Active" : "Road Accessibility: No");
+            SetLabelText(lblSelectedTileRoad, tile.HasRoadAccess ? "Road Access: Yes" : "Road Access: No");
             SetLabelForeColor(lblSelectedTileRoad, tile.HasRoadAccess ? Color.FromArgb(100, 240, 140) : Color.FromArgb(240, 100, 100));
 
-            if (tile.Type == TileType.Factory || tile.Type == TileType.Retail)
+            if (tile.Type == TileType.Factory || tile.Type == TileType.Retail || tile.Type == TileType.Farm || tile.Type == TileType.OilWell)
             {
-                SetLabelText(lblSelectedTileInventory, $"Inventory Stocks: {tile.Inventory:F0} / {tile.MaxInventory:F0}");
+                SetLabelText(lblSelectedTileInventory, $"Stock: {tile.Inventory:F0} / {tile.MaxInventory:F0}");
             }
             else if (tile.Type == TileType.Apartment)
             {
-                SetLabelText(lblSelectedTileInventory, $"Occupant Tenants: {tile.Inventory:F0} / {tile.MaxInventory:F0}");
+                SetLabelText(lblSelectedTileInventory, $"Tenants: {tile.Inventory:F0} / {tile.MaxInventory:F0}");
             }
             else if (tile.Type == TileType.University)
             {
-                SetLabelText(lblSelectedTileInventory, $"Training Progress: {tile.Inventory:F0}% / 100%");
+                SetLabelText(lblSelectedTileInventory, $"Progress: {tile.Inventory:F0}%");
             }
             else
             {
-                SetLabelText(lblSelectedTileInventory, "Inventory Stocks: N/A");
+                SetLabelText(lblSelectedTileInventory, "Stock: N/A");
             }
 
             bool isBuilding = tile.Type != TileType.Grass && tile.Type != TileType.Road;
+            string ownerStr = tile.IsOwnedByPlayer ? "Player" : "Unowned (City)";
 
             if (isBuilding)
             {
-                SetLabelText(lblSelectedTileStaff, $"Employees Assigned: {tile.EmployeeCount} / {tile.MaxEmployees}");
-                SetControlVisible(btnUpgradeBuilding, tile.Level < 3);
+                SetLabelText(lblSelectedTileStaff, $"Staff: {tile.EmployeeCount}/{tile.MaxEmployees}\nOwner: {ownerStr}");
+                SetControlVisible(btnUpgradeBuilding, tile.Level < 3 && tile.IsOwnedByPlayer);
                 
                 double upgradeCost = tile.Type switch
                 {
@@ -1411,9 +1424,11 @@ namespace TycoonGame.UI
                     TileType.PowerPlant => 40000.0,
                     TileType.Apartment => 40000.0,
                     TileType.University => 60000.0,
+                    TileType.Farm => 16000.0,
+                    TileType.OilWell => 28000.0,
                     _ => 0
                 };
-                string upgradeText = $"Upgrade Block (${upgradeCost / 1000:F0}K)";
+                string upgradeText = $"Upgrade (${upgradeCost / 1000:F0}K)";
                 if (btnUpgradeBuilding.Text != upgradeText)
                 {
                     btnUpgradeBuilding.Text = upgradeText;
@@ -1421,7 +1436,7 @@ namespace TycoonGame.UI
             }
             else
             {
-                SetLabelText(lblSelectedTileStaff, "Employees Assigned: N/A");
+                SetLabelText(lblSelectedTileStaff, $"Staff: N/A\nOwner: {ownerStr}");
                 SetControlVisible(btnUpgradeBuilding, false);
             }
 

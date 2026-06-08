@@ -20,7 +20,10 @@ namespace TycoonGame.Rendering
         BuildApartment,
         BuildUniversity,
         Bulldozer,
-        Upgrade
+        Upgrade,
+        BuyPlot,
+        BuildFarm,
+        BuildOilWell
     }
 
     public class MonoGamePanel : Control
@@ -321,6 +324,8 @@ namespace TycoonGame.Rendering
                 TileType.PowerPlant => 40000.0,
                 TileType.Apartment => 40000.0,
                 TileType.University => 60000.0,
+                TileType.Farm => 16000.0,
+                TileType.OilWell => 28000.0,
                 _ => 0
             };
             btnCustUpgrade.Text = tile.Level < 3 ? $"UPGRADE BUILDING (${upgradeCost / 1000:F0}K)" : "MAX LEVEL REACHED";
@@ -509,14 +514,29 @@ namespace TycoonGame.Rendering
                     HoveredTile.Item2 >= 0 && HoveredTile.Item2 < GameEngine.MapSize)
                 {
                     Tile tile = Engine.Grid[HoveredTile.Item1, HoveredTile.Item2];
-                    if (tile.Type != TileType.Grass && tile.Type != TileType.Road)
+                    bool shouldShowTooltip = (tile.Type != TileType.Grass && tile.Type != TileType.Road) || tile.HasOilDeposit || ActiveTool == BuildTool.BuyPlot;
+
+                    if (shouldShowTooltip)
                     {
-                        lblHoverType.Text = $"{tile.Type} (Tier {tile.Level})";
-                        lblHoverAddress.Text = $"Sector Address: [{tile.X}, {tile.Y}]";
-                        lblHoverStaff.Text = $"Staff Hired: {tile.EmployeeCount} / {tile.MaxEmployees}";
-                        lblHoverStatus.Text = $"Powered: {(tile.IsPowered ? "YES" : "NO")} | Road Access: {(tile.HasRoadAccess ? "YES" : "NO")}";
-                        lblHoverEconomics.Text = $"Upkeep: ${tile.MaintenanceCost:F0}/hr | Value: ${tile.GetAssetValue() / 1000:F0}K";
-                        lblHoverSkills.Text = $"Skill: {(tile.SkillLevel * 100):F0}% | Morale: {(tile.Morale * 100):F0}%";
+                        if (tile.Type != TileType.Grass && tile.Type != TileType.Road)
+                        {
+                            lblHoverType.Text = $"{tile.Type} (Tier {tile.Level})";
+                            lblHoverAddress.Text = $"Sector Address: [{tile.X}, {tile.Y}]";
+                            lblHoverStaff.Text = $"Staff Hired: {tile.EmployeeCount} / {tile.MaxEmployees}";
+                            lblHoverStatus.Text = $"Powered: {(tile.IsPowered ? "YES" : "NO")} | Road Access: {(tile.HasRoadAccess ? "YES" : "NO")}";
+                            lblHoverEconomics.Text = $"Upkeep: ${tile.MaintenanceCost:F0}/hr | Value: ${tile.GetAssetValue() / 1000:F0}K";
+                            lblHoverSkills.Text = $"Skill: {(tile.SkillLevel * 100):F0}% | Morale: {(tile.Morale * 100):F0}%";
+                        }
+                        else
+                        {
+                            lblHoverType.Text = tile.HasOilDeposit ? "Grass (Oil Deposit)" : "Grass Plot";
+                            lblHoverAddress.Text = $"Sector Address: [{tile.X}, {tile.Y}]";
+                            lblHoverStaff.Text = tile.IsOwnedByPlayer ? "Owner: Player" : "Owner: Unowned";
+                            lblHoverStatus.Text = $"Land Value Index: {tile.LandValue}";
+                            double landCost = (double)tile.LandValue * 150.0;
+                            lblHoverEconomics.Text = tile.IsOwnedByPlayer ? "Cost: Already Purchased" : $"Plot Cost: ${landCost:N0}";
+                            lblHoverSkills.Text = "Click to Inspect or Buy";
+                        }
 
                         // Offset the tooltip location so it doesn't wrap off the window edges
                         int tx = e.X + 15;
@@ -642,6 +662,23 @@ namespace TycoonGame.Rendering
                     {
                         TileSelected?.Invoke(this, SelectedTile);
                     }
+                    break;
+
+                case BuildTool.BuyPlot:
+                    actionSuccess = Engine.BuyLandPlot(tx, ty);
+                    if (actionSuccess)
+                    {
+                        SelectedTile = new Tuple<int, int>(tx, ty);
+                        TileSelected?.Invoke(this, SelectedTile);
+                    }
+                    break;
+
+                case BuildTool.BuildFarm:
+                    actionSuccess = Engine.BuildStructure(tx, ty, TileType.Farm);
+                    break;
+
+                case BuildTool.BuildOilWell:
+                    actionSuccess = Engine.BuildStructure(tx, ty, TileType.OilWell);
                     break;
             }
 

@@ -16,6 +16,7 @@ namespace TycoonGame.Rendering
         private Texture2D selectorTexture;
         private Texture2D warningPowerTexture;
         private Texture2D warningRoadTexture;
+        private Texture2D oilSlickTexture = null!;
 
         public float CameraX { get; set; }
         public float CameraY { get; set; }
@@ -45,6 +46,9 @@ namespace TycoonGame.Rendering
             buildingTextures[TileType.PowerPlant] = SpriteGenerator.CreateBuildingTexture(device, 128, 128, TileType.PowerPlant);
             buildingTextures[TileType.Apartment] = SpriteGenerator.CreateBuildingTexture(device, 128, 128, TileType.Apartment);
             buildingTextures[TileType.University] = SpriteGenerator.CreateBuildingTexture(device, 128, 128, TileType.University);
+            buildingTextures[TileType.Farm] = SpriteGenerator.CreateBuildingTexture(device, 128, 128, TileType.Farm);
+            buildingTextures[TileType.OilWell] = SpriteGenerator.CreateBuildingTexture(device, 128, 128, TileType.OilWell);
+            oilSlickTexture = SpriteGenerator.CreateOilSlickTexture(device, 128, 64);
 
             // Generate warning badges (16x16 icons)
             warningPowerTexture = CreateWarningBadge(device, Color.Red); // Power outage badge
@@ -165,6 +169,20 @@ namespace TycoonGame.Rendering
                             Zoom, 
                             SpriteEffects.None, 
                             0f);
+
+                        if (tile.Type == TileType.Grass && tile.HasOilDeposit)
+                        {
+                            spriteBatch.Draw(
+                                oilSlickTexture,
+                                screenPos,
+                                null,
+                                Color.White,
+                                0f,
+                                new Vector2(64, 32),
+                                Zoom,
+                                SpriteEffects.None,
+                                0f);
+                        }
                     }
                     else
                     {
@@ -179,6 +197,20 @@ namespace TycoonGame.Rendering
                             Zoom, 
                             SpriteEffects.None, 
                             0f);
+
+                        if (tile.HasOilDeposit)
+                        {
+                            spriteBatch.Draw(
+                                oilSlickTexture,
+                                screenPos,
+                                null,
+                                Color.White,
+                                0f,
+                                new Vector2(64, 32),
+                                Zoom,
+                                SpriteEffects.None,
+                                0f);
+                        }
 
                         // Draw building sprite (128x128)
                         if (buildingTextures.TryGetValue(tile.Type, out Texture2D? bTex))
@@ -280,7 +312,7 @@ namespace TycoonGame.Rendering
                     Tile tile = engine.Grid[x, y];
                     Color c = tile.Type switch
                     {
-                        TileType.Grass => new Color(34, 139, 34),
+                        TileType.Grass => tile.HasOilDeposit ? new Color(20, 15, 30) : new Color(34, 139, 34),
                         TileType.Road => new Color(105, 105, 105),
                         TileType.Office => new Color(0, 191, 255),
                         TileType.Factory => new Color(210, 105, 30),
@@ -288,6 +320,8 @@ namespace TycoonGame.Rendering
                         TileType.PowerPlant => new Color(255, 215, 0),
                         TileType.Apartment => new Color(138, 43, 226),
                         TileType.University => new Color(255, 20, 147),
+                        TileType.Farm => new Color(46, 139, 87),
+                        TileType.OilWell => new Color(47, 79, 79),
                         _ => new Color(34, 139, 34)
                     };
 

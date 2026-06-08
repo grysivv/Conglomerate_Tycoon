@@ -15,6 +15,8 @@ namespace TycoonGame.Core
         public double TrainingBudgetPerHour { get; set; }
         public double SkillLevel { get; set; }
         public double Morale { get; set; }
+        public bool IsOwnedByPlayer { get; set; }
+        public bool HasOilDeposit { get; set; }
 
         public double GetPerformanceMultiplier()
         {
@@ -50,6 +52,8 @@ namespace TycoonGame.Core
             Level = 0;
             IsPowered = false;
             HasRoadAccess = false;
+            IsOwnedByPlayer = false;
+            HasOilDeposit = false;
             EmployeeCount = 0;
             MaxEmployees = 0;
             Inventory = 0;
@@ -171,6 +175,24 @@ namespace TycoonGame.Core
                     MaintenanceCost = 400.0; // High academic facility upkeep
                     break;
 
+                case TileType.Farm:
+                    MaxEmployees = 12;
+                    Inventory = 0;
+                    MaxInventory = 150;
+                    ProductionRate = 2.0;
+                    SalesRate = 0;
+                    MaintenanceCost = 40.0;
+                    break;
+
+                case TileType.OilWell:
+                    MaxEmployees = 10;
+                    Inventory = 0;
+                    MaxInventory = 100;
+                    ProductionRate = 1.5;
+                    SalesRate = 0;
+                    MaintenanceCost = 180.0;
+                    break;
+
                 case TileType.Grass:
                 default:
                     ResetToGrass();
@@ -191,7 +213,7 @@ namespace TycoonGame.Core
                 MaxEmployees = (int)(MaxEmployees * 1.5); // 50% capacity expansion
             }
 
-            if (Type == TileType.Factory || Type == TileType.Retail || Type == TileType.Apartment)
+            if (Type == TileType.Factory || Type == TileType.Retail || Type == TileType.Apartment || Type == TileType.Farm || Type == TileType.OilWell)
             {
                 MaxInventory = (int)(MaxInventory * 1.5); // 50% storage/occupancy capacity increase
             }
@@ -204,6 +226,8 @@ namespace TycoonGame.Core
                 TileType.PowerPlant => 40000.0,
                 TileType.Apartment => 40000.0,
                 TileType.University => 60000.0,
+                TileType.Farm => 16000.0,
+                TileType.OilWell => 28000.0,
                 _ => 0.0
             };
             DepreciatedValue += upgradeCost;
@@ -221,6 +245,8 @@ namespace TycoonGame.Core
                 case TileType.Road: return 0.2;
                 case TileType.Apartment: return 6.0 * Level; // Apartments need grid electricity
                 case TileType.University: return 10.0 * Level; // Universities need high grid electricity
+                case TileType.Farm: return 2.0 * Level;
+                case TileType.OilWell: return 12.0 * Level;
                 case TileType.PowerPlant: return 0;
                 default: return 0;
             }
@@ -255,6 +281,8 @@ namespace TycoonGame.Core
                 TileType.PowerPlant => 50000.0,
                 TileType.Apartment => 50000.0,
                 TileType.University => 80000.0,
+                TileType.Farm => 20000.0,
+                TileType.OilWell => 35000.0,
                 _ => 0.0
             };
             double upgradeCost = Type switch
@@ -265,6 +293,8 @@ namespace TycoonGame.Core
                 TileType.PowerPlant => 40000.0,
                 TileType.Apartment => 40000.0,
                 TileType.University => 60000.0,
+                TileType.Farm => 16000.0,
+                TileType.OilWell => 28000.0,
                 _ => 0.0
             };
             return baseCost + (Level - 1) * upgradeCost;

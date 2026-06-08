@@ -158,6 +158,16 @@ namespace TycoonGame.Rendering
                     leftWallColor = new Color(170, 70, 60); // Classic red brick
                     rightWallColor = new Color(130, 50, 40); // Shaded red brick
                     break;
+                case TileType.Farm:
+                    roofColor = new Color(180, 140, 80); // Straw/brown thatch
+                    leftWallColor = new Color(210, 80, 70); // Barn red
+                    rightWallColor = new Color(160, 60, 50); // Shaded barn red
+                    break;
+                case TileType.OilWell:
+                    roofColor = new Color(70, 70, 75); // Dark steel derrick
+                    leftWallColor = new Color(90, 95, 100); // Steel framing
+                    rightWallColor = new Color(60, 65, 70); // Shaded steel framing
+                    break;
             }
 
             for (int y = 0; y < height; y++)
@@ -267,6 +277,27 @@ namespace TycoonGame.Rendering
                                 c = new Color(210, 205, 190); // White limestone pillars
                             }
                         }
+                        else if (type == TileType.Farm)
+                        {
+                            if (localX > 16 && localX < 48 && localY > 40)
+                            {
+                                if (Math.Abs(localX - localY + 20) < 3 || Math.Abs(localX + localY - 95) < 3 || localX == 17 || localX == 47 || localY == 41 || localY == 89)
+                                {
+                                    c = Color.White;
+                                }
+                                else
+                                {
+                                    c = new Color(90, 30, 20);
+                                }
+                            }
+                        }
+                        else if (type == TileType.OilWell)
+                        {
+                            if (localX % 16 < 3 || localY % 20 < 3 || Math.Abs(localX - localY) % 16 < 2)
+                            {
+                                c = new Color(30, 30, 32);
+                            }
+                        }
 
                         data[index] = c;
                     }
@@ -354,6 +385,20 @@ namespace TycoonGame.Rendering
                                 c = new Color(160, 155, 140); // Shaded pillars
                             }
                         }
+                        else if (type == TileType.Farm)
+                        {
+                            if (localX > 20 && localX < 44 && localY > 30 && localY < 50)
+                            {
+                                c = new Color(240, 230, 150);
+                            }
+                        }
+                        else if (type == TileType.OilWell)
+                        {
+                            if (localX % 16 < 3 || localY % 20 < 3 || Math.Abs(localX - localY) % 16 < 2)
+                            {
+                                c = new Color(20, 20, 22);
+                            }
+                        }
 
                         data[index] = c;
                     }
@@ -413,6 +458,48 @@ namespace TycoonGame.Rendering
             double dx = Math.Abs(x - cx) / cx;
             double dy = Math.Abs(y - cy) / cy;
             return 1.0 - (dx + dy);
+        }
+
+        public static Texture2D CreateOilSlickTexture(GraphicsDevice device, int width, int height)
+        {
+            Texture2D texture = new Texture2D(device, width, height);
+            Color[] data = new Color[width * height];
+
+            double cx = width / 2.0;
+            double cy = height / 2.0;
+            Random rand = new Random(999);
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    int index = y * width + x;
+
+                    if (IsInsideDiamond(x, y, width, height))
+                    {
+                        double rx = (x - cx);
+                        double ry = (y - cy) * 2.0;
+                        double radiusSq = rx * rx + ry * ry;
+
+                        double blobRadius = 24.0 + rand.Next(-3, 4);
+                        if (radiusSq < blobRadius * blobRadius)
+                        {
+                            data[index] = new Color(15, 10, 25, 170); // purple-black slick
+                        }
+                        else
+                        {
+                            data[index] = Color.Transparent;
+                        }
+                    }
+                    else
+                    {
+                        data[index] = Color.Transparent;
+                    }
+                }
+            }
+
+            texture.SetData(data);
+            return texture;
         }
     }
 }

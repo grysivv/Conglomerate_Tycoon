@@ -70,6 +70,8 @@ namespace TycoonGame.Core
         public double TrainingBudgetPerHour { get; set; }
         public double SkillLevel { get; set; }
         public double Morale { get; set; }
+        public bool IsOwnedByPlayer { get; set; }
+        public bool HasOilDeposit { get; set; }
     }
 
     public class EmployeeSaveData
@@ -158,8 +160,135 @@ namespace TycoonGame.Core
                 }
             }
 
-            // Create highway entrance road automatically
-            Grid[EntranceX, EntranceY].SetupBuilding(TileType.Road);
+            // 1. Generate Starting player-owned zone near the highway entrance
+            for (int x = 0; x <= 12; x++)
+            {
+                for (int y = MapSize / 2 - 6; y <= MapSize / 2 + 6; y++)
+                {
+                    if (x >= 0 && x < MapSize && y >= 0 && y < MapSize)
+                    {
+                        Grid[x, y].IsOwnedByPlayer = true;
+                    }
+                }
+            }
+
+            // 2. Procedurally Generate Clustered Oil Deposits
+            Random geoRand = new Random(1337);
+            int numFields = geoRand.Next(4, 7); // 4 to 6 oil fields
+            for (int f = 0; f < numFields; f++)
+            {
+                int centerX = geoRand.Next(20, MapSize - 20);
+                int centerY = geoRand.Next(15, MapSize - 15);
+                int radius = geoRand.Next(3, 7);
+
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    for (int dy = -radius; dy <= radius; dy++)
+                    {
+                        int px = centerX + dx;
+                        int py = centerY + dy;
+                        if (px >= 0 && px < MapSize && py >= 0 && py < MapSize)
+                        {
+                            double dist = Math.Sqrt(dx * dx + dy * dy);
+                            if (dist <= radius && geoRand.NextDouble() < (1.0 - (dist / radius) * 0.7))
+                            {
+                                Grid[px, py].HasOilDeposit = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. Procedurally Generate City Grid (Avenues, Streets, Zones)
+            List<int> horizontalAvenues = new List<int> { MapSize / 2 - 30, MapSize / 2, MapSize / 2 + 30 };
+            List<int> verticalStreets = new List<int>();
+            for (int x = 15; x < MapSize - 10; x += 18)
+            {
+                verticalStreets.Add(x);
+            }
+
+            // Draw road grid
+            foreach (int ay in horizontalAvenues)
+            {
+                for (int x = 0; x < MapSize; x++)
+                {
+                    Grid[x, ay].SetupBuilding(TileType.Road);
+                }
+            }
+            foreach (int sx in verticalStreets)
+            {
+                for (int y = MapSize / 2 - 40; y <= MapSize / 2 + 40; y++)
+                {
+                    if (y >= 0 && y < MapSize)
+                    {
+                        Grid[sx, y].SetupBuilding(TileType.Road);
+                    }
+                }
+            }
+
+            // 4. Populate Zoned City Buildings
+            for (int x = 10; x < MapSize - 10; x++)
+            {
+                for (int y = MapSize / 2 - 38; y <= MapSize / 2 + 38; y++)
+                {
+                    Tile tile = Grid[x, y];
+                    if (tile.Type == TileType.Road || tile.IsOwnedByPlayer) continue;
+
+                    bool adjacentToRoad = false;
+                    int[] rx = { 1, -1, 0, 0 };
+                    int[] ry = { 0, 0, 1, -1 };
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int nx = x + rx[i];
+                        int ny = y + ry[i];
+                        if (nx >= 0 && nx < MapSize && ny >= 0 && ny < MapSize)
+                        {
+                            if (Grid[nx, ny].Type == TileType.Road)
+                            {
+                                adjacentToRoad = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (adjacentToRoad && geoRand.NextDouble() < 0.28) // 28% zoning fill rate
+                    {
+                        if (x >= 45 && x <= 75)
+                        {
+                            TileType t = (geoRand.Next(2) == 0) ? TileType.Office : TileType.Retail;
+                            tile.SetupBuilding(t);
+                            tile.Level = geoRand.Next(1, 3);
+                            tile.EmployeeCount = geoRand.Next(1, tile.MaxEmployees / 2 + 1);
+                        }
+                        else if (x > 75)
+                        {
+                            if (geoRand.Next(6) == 0)
+                            {
+                                tile.SetupBuilding(TileType.PowerPlant);
+                            }
+                            else
+                            {
+                                tile.SetupBuilding(TileType.Factory);
+                                tile.Level = geoRand.Next(1, 3);
+                                tile.EmployeeCount = geoRand.Next(2, tile.MaxEmployees / 2 + 1);
+                            }
+                        }
+                        else
+                        {
+                            if (geoRand.Next(12) == 0)
+                            {
+                                tile.SetupBuilding(TileType.University);
+                            }
+                            else
+                            {
+                                tile.SetupBuilding(TileType.Apartment);
+                                tile.Level = geoRand.Next(1, 3);
+                                tile.Inventory = geoRand.Next(5, (int)tile.MaxInventory / 2);
+                            }
+                        }
+                    }
+                }
+            }
 
             Employees = new List<Employee>();
             Stats = new CompanyStats();
@@ -266,13 +395,31 @@ namespace TycoonGame.Core
             return multiplier;
         }
 
+        public bool BuyLandPlot(int x, int y)
+        {
+            if (x < 0 || x >= MapSize || y < 0 || y >= MapSize) return false;
+            Tile tile = Grid[x, y];
+            if (tile.IsOwnedByPlayer) return true; // Already owned
+
+            double landCost = (double)tile.LandValue * 150.0;
+            if (Stats.Cash < landCost) return false;
+
+            Stats.Cash -= landCost;
+            tile.IsOwnedByPlayer = true;
+            return true;
+        }
+
         public bool BuildStructure(int x, int y, TileType type)
         {
             if (x < 0 || x >= MapSize || y < 0 || y >= MapSize) return false;
-            if (Grid[x, y].Type != TileType.Grass) return false; // Must be empty
+            Tile tile = Grid[x, y];
+            if (tile.Type != TileType.Grass) return false; // Must be empty
 
             // Highway cannot be demolished or built over
             if (x == EntranceX && y == EntranceY) return false;
+
+            // Resource constraint: Oil Well can only be built on oil deposits
+            if (type == TileType.OilWell && !tile.HasOilDeposit) return false;
 
             double cost = type switch
             {
@@ -282,14 +429,26 @@ namespace TycoonGame.Core
                 TileType.Retail => 40000.0,
                 TileType.PowerPlant => 50000.0,
                 TileType.Apartment => 50000.0,
-                TileType.University => 80000.0, // Academic facility cost
+                TileType.University => 80000.0,
+                TileType.Farm => 20000.0,
+                TileType.OilWell => 35000.0,
                 _ => 0
             };
 
-            if (Stats.Cash < cost) return false; // Insufficient funds
+            // Calculate Land Plot purchase cost if not owned
+            double landCost = 0.0;
+            if (!tile.IsOwnedByPlayer)
+            {
+                landCost = (double)tile.LandValue * 150.0;
+            }
 
-            Stats.Cash -= cost;
-            Grid[x, y].SetupBuilding(type);
+            double totalCost = cost + landCost;
+            if (Stats.Cash < totalCost) return false; // Insufficient funds
+
+            // Process payments
+            Stats.Cash -= totalCost;
+            tile.IsOwnedByPlayer = true; // Land is now owned
+            tile.SetupBuilding(type);
             
             UpdateRoadAccess();
             if (type == TileType.Road)
@@ -1008,6 +1167,50 @@ namespace TycoonGame.Core
                             }
                         }
                     }
+                    else if (tile.Type == TileType.Farm)
+                    {
+                        if (tile.EmployeeCount > 0)
+                        {
+                            double performanceSum = tile.EmployeeCount * tile.GetPerformanceMultiplier();
+                            double powerFactor = tile.IsPowered ? 1.0 : 0.5; // Farm runs at 50% without power
+                            double roadFactor = tile.HasRoadAccess ? 1.0 : 0.4;
+                            double output = performanceSum * tile.ProductionRate * tile.Level * powerFactor * roadFactor;
+                            double maxProduce = tile.MaxInventory - tile.Inventory;
+                            double actualProduction = Math.Clamp(output, 0, maxProduce);
+                            tile.Inventory += actualProduction;
+                        }
+                        if (tile.Inventory > 0)
+                        {
+                            double exportQty = Math.Min(tile.Inventory, 10.0 * tile.Level);
+                            tile.Inventory -= exportQty;
+                            double revenue = exportQty * 18.00;
+                            Stats.CurrentHourRetailRevenue += revenue;
+                            tile.HistoricalEarnings += revenue;
+                            tile.LastDayEarnings += revenue;
+                        }
+                    }
+                    else if (tile.Type == TileType.OilWell)
+                    {
+                        if (tile.EmployeeCount > 0)
+                        {
+                            double performanceSum = tile.EmployeeCount * tile.GetPerformanceMultiplier();
+                            double powerFactor = tile.IsPowered ? 1.0 : 0.1; // Oil well runs at 10% without power (needs pumps)
+                            double roadFactor = tile.HasRoadAccess ? 1.0 : 0.2;
+                            double output = performanceSum * tile.ProductionRate * tile.Level * powerFactor * roadFactor;
+                            double maxProduce = tile.MaxInventory - tile.Inventory;
+                            double actualProduction = Math.Clamp(output, 0, maxProduce);
+                            tile.Inventory += actualProduction;
+                        }
+                        if (tile.Inventory > 0)
+                        {
+                            double exportQty = Math.Min(tile.Inventory, 8.0 * tile.Level);
+                            tile.Inventory -= exportQty;
+                            double revenue = exportQty * 40.00;
+                            Stats.CurrentHourOfficeRevenue += revenue;
+                            tile.HistoricalEarnings += revenue;
+                            tile.LastDayEarnings += revenue;
+                        }
+                    }
                 }
             }
         }
@@ -1317,7 +1520,9 @@ namespace TycoonGame.Core
                             EmployeeCount = t.EmployeeCount,
                             TrainingBudgetPerHour = t.TrainingBudgetPerHour,
                             SkillLevel = t.SkillLevel,
-                            Morale = t.Morale
+                            Morale = t.Morale,
+                            IsOwnedByPlayer = t.IsOwnedByPlayer,
+                            HasOilDeposit = t.HasOilDeposit
                         });
                     }
                 }
@@ -1406,6 +1611,8 @@ namespace TycoonGame.Core
                 t.TrainingBudgetPerHour = tData.TrainingBudgetPerHour;
                 t.SkillLevel = tData.SkillLevel > 0 ? tData.SkillLevel : 0.1;
                 t.Morale = tData.Morale > 0 ? tData.Morale : 0.8;
+                t.IsOwnedByPlayer = tData.IsOwnedByPlayer;
+                t.HasOilDeposit = tData.HasOilDeposit;
             }
 
             // Restore employees

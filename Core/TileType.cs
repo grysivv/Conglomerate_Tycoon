@@ -9,6 +9,8 @@ namespace TycoonGame.Core
         Retail,
         PowerPlant,
         Apartment,
-        University
+        University,
+        Farm,
+        OilWell
     }
 }
