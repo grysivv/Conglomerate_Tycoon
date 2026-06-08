@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CONGLOMERATE TYCOON | Firms Control Center</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        outfit: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        cyber: {
+                            bg: '#05070c',
+                            panel: '#0d121f',
+                            border: '#1e293b',
+                            accent: '#06b6d4',
+                            success: '#10b981',
+                            warning: '#f59e0b',
+                            danger: '#f43f5e',
+                            text: '#f8fafc',
+                            muted: '#94a3b8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Custom CSS for custom progress meters & animations -->
+    <style>
+        body {
+            background-color: #05070c;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.05) 0px, transparent 50%),
+                radial-gradient(at 50% 0%, rgba(16, 185, 129, 0.03) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(244, 63, 94, 0.03) 0px, transparent 50%);
+            overflow-x: hidden;
+        }
+        .glow-cyan:hover {
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.25);
+            border-color: rgba(6, 182, 212, 0.5);
+        }
+        .glow-green {
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+        }
+        .glass-panel {
+            background: rgba(13, 18, 31, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(30, 41, 59, 0.8);
+        }
+        /* Custom styled sliders */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #1e293b;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #06b6d4;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(6, 182, 212, 0.6);
+            transition: transform 0.1s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+        }
+        /* Grid matrix connection lines */
+        .matrix-connector {
+            position: absolute;
+            background: rgba(6, 182, 212, 0.15);
+            z-index: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="text-slate-100 font-sans min-h-screen flex flex-col antialiased">
+
+    <!-- Top Navigation Bar -->
+    <header class="w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-6 py-4 flex justify-between items-center z-50">
+        <div class="flex items-center gap-3">
+            <div class="h-8 w-8 bg-gradient-to-tr from-cyan-500 to-emerald-500 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/10">
+                <i data-lucide="building-2" class="h-4 w-4 text-slate-950 stroke-[2.5]"></i>
+            </div>
+            <div>
+                <h1 class="font-outfit text-lg font-bold tracking-tight bg-gradient-to-r from-slate-100 via-slate-100 to-cyan-400 bg-clip-text text-transparent">CONGLOMERATE TYCOON</h1>
+                <p class="text-[10px] tracking-wider text-cyan-500/80 font-mono font-semibold uppercase">Firms Strategic Management Console</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-6 text-xs font-mono text-slate-400">
+            <div class="flex items-center gap-2">
+                <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>SYSTEM ONLINE</span>
+            </div>
+            <div class="border-l border-slate-800 pl-4 py-1">
+                <span>SIM STATE: <span class="text-cyan-400 font-semibold">TICKING</span></span>
+            </div>
+            <div class="border-l border-slate-800 pl-4 py-1">
+                <span>CONGLOMERATE CASH: <span class="text-emerald-400 font-semibold">$14,248,150.00</span></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Left Sidebar: Building list -->
+        <aside class="w-80 border-r border-slate-800/80 bg-slate-950/40 p-4 flex flex-col justify-between overflow-y-auto">
+            <div>
+                <div class="flex items-center justify-between mb-4 px-1">
+                    <span class="text-xs font-mono font-semibold uppercase text-slate-400 tracking-wider">Active Operations</span>
+                    <span class="text-xs px-2 py-0.5 bg-slate-800 text-slate-400 rounded-full font-mono" id="firms-count">7 Firms</span>
+                </div>
+                
+                <!-- Search & Filters -->
+                <div class="relative mb-3">
+                    <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-500"></i>
+                    <input type="text" placeholder="Search structures..." class="w-full bg-slate-900/80 border border-slate-800 rounded-md py-2 pl-9 pr-4 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50">
+                </div>
+
+                <!-- Building List Group -->
+                <div class="space-y-2" id="building-list">
+                    <!-- Dynamic rendering via JS -->
+                </div>
+            </div>
+
+            <!-- Global templates & help -->
+            <div class="mt-6 pt-4 border-t border-slate-800/80 text-xs text-slate-500 font-mono">
+                <div class="p-3 bg-slate-900/40 rounded-lg border border-slate-800/40">
+                    <div class="flex items-center gap-2 text-cyan-400 mb-1">
+                        <i data-lucide="info" class="h-3.5 w-3.5"></i>
+                        <span class="font-semibold uppercase tracking-wider text-[10px]">Macro Multipliers</span>
+                    </div>
+                    <p class="text-[11px] leading-relaxed">System demands scale dynamic pricing models. Efficiency scores below 70% increase maintenance overhead.</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Central Work Area -->
+        <section class="flex-1 flex flex-col bg-cyber-bg overflow-y-auto p-6" id="workspace-container">
+            
+            <!-- Dynamic Modal Workspace -->
+            <div class="w-full max-w-5xl mx-auto flex flex-col gap-6" id="building-management-modal">
+                
+                <!-- Section 1: Nagłówek (Header) -->
+                <div class="glass-panel rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
+                    <div class="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-cyan-500 to-emerald-500"></div>
+                    
+                    <div class="flex items-start gap-4">
+                        <div class="h-12 w-12 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-center text-cyan-400" id="building-icon-badge">
+                            <i data-lucide="store" class="h-6 w-6"></i>
+                        </div>
+                        <div>
+                            <!-- Renameable title -->
+                            <div class="flex items-center gap-2 group">
+                                <input type="text" id="building-title-input" value="MegaMart Store #4" class="font-outfit text-xl font-bold bg-transparent border-b border-transparent hover:border-slate-700 focus:border-cyan-500 focus:outline-none py-0.5 px-1 rounded text-slate-100 font-semibold w-64 transition duration-150">
+                                <i data-lucide="edit-2" class="h-3 w-3 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                            </div>
+                            <!-- Coordinate & Sector -->
+                            <p class="text-[11px] font-mono text-slate-400 mt-1 flex items-center gap-2">
+                                <span class="text-cyan-500 font-semibold" id="building-type-badge">RETAIL OUTLET</span>
+                                <span class="text-slate-600">|</span>
+                                <span id="building-coords">GRID COORDINATES: [14, 62]</span>
+                                <span class="text-slate-600">|</span>
+                                <span class="flex items-center gap-1">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500" id="building-status-dot"></span>
+                                    <span id="building-status-text">OPERATIONAL</span>
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Financial Headers & Sparklines -->
+                    <div class="flex flex-wrap gap-6 items-center">
+                        
+                        <!-- Financial Box: Revenue -->
+                        <div class="flex items-center gap-3 bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/60">
+                            <div>
+                                <p class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Revenue / hr</p>
+                                <p class="font-outfit text-base font-bold text-emerald-400" id="header-revenue">$18,450.00</p>
+                            </div>
+                            <div class="w-16 h-8 bg-slate-950/60 rounded border border-slate-800/40 overflow-hidden flex items-end">
+                                <canvas id="sparkline-revenue" width="64" height="32" class="w-full h-full"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Financial Box: Upkeep -->
+                        <div class="flex items-center gap-3 bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/60">
+                            <div>
+                                <p class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Upkeep / hr</p>
+                                <p class="font-outfit text-base font-bold text-rose-400" id="header-upkeep">-$4,200.00</p>
+                            </div>
+                            <div class="w-16 h-8 bg-slate-950/60 rounded border border-slate-800/40 overflow-hidden flex items-end">
+                                <canvas id="sparkline-upkeep" width="64" height="32" class="w-full h-full"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Financial Box: Efficiency -->
+                        <div class="flex items-center gap-3 bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/60">
+                            <div>
+                                <p class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Efficiency</p>
+                                <p class="font-outfit text-base font-bold text-cyan-400" id="header-efficiency">89.4%</p>
+                            </div>
+                            <div class="w-16 h-8 bg-slate-950/60 rounded border border-slate-800/40 overflow-hidden flex items-end">
+                                <canvas id="sparkline-efficiency" width="64" height="32" class="w-full h-full"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Section 2: Central Work Area (Dynamic Content Panel) -->
+                <div class="glass-panel rounded-xl p-6 min-h-[420px] flex flex-col justify-between" id="dynamic-content-panel">
+                    
+                    <!-- Dynamic views will load here. Pre-loading layout elements inside containers toggled by hidden classes -->
+                    
+                    <!-- A) Retail & Manufacturing: 3x3 Block Matrix -->
+                    <div id="view-matrix" class="hidden flex-1 flex flex-col gap-6">
+                        <div class="flex justify-between items-center border-b border-slate-800/80 pb-3">
+                            <div>
+                                <h3 class="text-sm font-semibold tracking-wide text-slate-200">Functional Layout & Connections</h3>
+                                <p class="text-[11px] text-slate-500 font-mono">3x3 internal layout representation. Product flows sequentially through connected blocks.</p>
+                            </div>
+                            <div class="flex items-center gap-4 text-xs font-mono text-slate-400" id="triad-panel">
+                                <!-- Dynamic Triad indicators (Price, Quality, Brand) -->
+                                <div class="flex items-center gap-1.5">
+                                    <span>Price:</span>
+                                    <span class="text-rose-400 font-bold" id="triad-price">85</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span>Quality:</span>
+                                    <span class="text-emerald-400 font-bold" id="triad-quality">92</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span>Brand:</span>
+                                    <span class="text-cyan-400 font-bold" id="triad-brand">78</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3x3 Grid Matrix Layout -->
+                        <div class="flex-1 flex flex-col lg:flex-row gap-6 items-center">
+                            <div class="relative w-[340px] h-[340px] bg-slate-950/40 border border-slate-800/60 p-2.5 rounded-lg grid grid-cols-3 grid-rows-3 gap-2 shrink-0">
+                                <!-- SVG for connectors drawing in background -->
+                                <svg class="absolute inset-0 w-full h-full pointer-events-none z-0" id="matrix-svg"></svg>
+                                
+                                <!-- 9 Grid Cells generated dynamically via JS -->
+                                <div class="grid grid-cols-3 grid-rows-3 gap-2 w-full h-full relative z-10" id="matrix-grid-container">
+                                    <!-- Rendered dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- Selected Block Inspector Panel -->
+                            <div class="flex-1 w-full bg-slate-950/30 border border-slate-800/40 rounded-lg p-4 flex flex-col justify-between h-[340px]" id="block-inspector">
+                                <div>
+                                    <div class="flex items-center justify-between border-b border-slate-800/60 pb-2 mb-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="px-2 py-0.5 text-[9px] font-mono font-bold bg-cyan-950 text-cyan-400 border border-cyan-800/40 rounded" id="inspector-block-type">INPUT BLOCK</span>
+                                            <h4 class="font-outfit text-sm font-semibold text-slate-100" id="inspector-block-name">Purchasing Dept</h4>
+                                        </div>
+                                        <span class="text-[10px] font-mono text-slate-500" id="inspector-block-id">Block #3</span>
+                                    </div>
+                                    
+                                    <div class="space-y-4">
+                                        <!-- Block Indicators -->
+                                        <div>
+                                            <div class="flex justify-between text-xs font-mono text-slate-400 mb-1.5">
+                                                <span>Supply Stream</span>
+                                                <span class="text-cyan-400 font-bold" id="inspector-supply-value">95%</span>
+                                            </div>
+                                            <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                                                <div class="bg-cyan-500 h-full rounded-full transition-all duration-300" id="inspector-supply-bar" style="width: 95%"></div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div class="flex justify-between text-xs font-mono text-slate-400 mb-1.5">
+                                                <span>Local Demand</span>
+                                                <span class="text-amber-400 font-bold" id="inspector-demand-value">62%</span>
+                                            </div>
+                                            <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                                                <div class="bg-amber-500 h-full rounded-full transition-all duration-300" id="inspector-demand-bar" style="width: 62%"></div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div class="flex justify-between text-xs font-mono text-slate-400 mb-1.5">
+                                                <span>Processing Utilization</span>
+                                                <span class="text-emerald-400 font-bold" id="inspector-utilization-value">84%</span>
+                                            </div>
+                                            <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                                                <div class="bg-emerald-500 h-full rounded-full transition-all duration-300" id="inspector-utilization-bar" style="width: 84%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Dynamic block settings -->
+                                <div class="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs">
+                                    <div class="flex flex-col">
+                                        <span class="text-[9px] font-mono text-slate-500 uppercase">Input Linkage</span>
+                                        <span class="text-slate-300 font-medium mt-0.5" id="inspector-linkage-text">Linked to Block #5</span>
+                                    </div>
+                                    <button class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 hover:border-slate-600 transition flex items-center gap-1.5 font-mono text-[10px]">
+                                        <i data-lucide="link" class="h-3 w-3"></i>
+                                        RE-LINK SUPPLIER
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- B) Extraction: Szyb Naftowy / Kopalnia -->
+                    <div id="view-extraction" class="hidden flex-1 flex flex-col gap-6">
+                        <div class="border-b border-slate-800/80 pb-3">
+                            <h3 class="text-sm font-semibold tracking-wide text-slate-200">Extraction Reserve Reserves & Depletion</h3>
+                            <p class="text-[11px] text-slate-500 font-mono">Real-time drilling monitoring, deposit quality metrics and exhaustion timelines.</p>
+                        </div>
+
+                        <div class="flex-1 flex flex-col md:flex-row gap-8 items-center justify-around py-4">
+                            <!-- Circular progress gauge -->
+                            <div class="flex flex-col items-center gap-3">
+                                <div class="relative w-40 h-40 flex items-center justify-center">
+                                    <svg class="w-full h-full transform -rotate-90">
+                                        <circle cx="80" cy="80" r="70" stroke="#1e293b" stroke-width="8" fill="transparent" />
+                                        <circle cx="80" cy="80" r="70" stroke="#f59e0b" stroke-width="8" fill="transparent" 
+                                            stroke-dasharray="440" stroke-dashoffset="132" id="extraction-reserves-ring" class="transition-all duration-500" />
+                                    </svg>
+                                    <div class="absolute flex flex-col items-center">
+                                        <span class="font-outfit text-2xl font-bold text-slate-100" id="extraction-reserves-percent">70%</span>
+                                        <span class="text-[10px] font-mono text-slate-500 uppercase tracking-widest">REMAINING</span>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-xs font-mono text-slate-400" id="extraction-reserves-val">420,000 / 600,000 Barrels</p>
+                                    <p class="text-[10px] font-mono text-slate-500 mt-1">Projected Lifespan: <span class="text-amber-500 font-bold" id="extraction-exhaustion">14 months</span></p>
+                                </div>
+                            </div>
+
+                            <!-- Quality & Speed parameters -->
+                            <div class="w-full max-w-sm space-y-6">
+                                <div class="p-4 bg-slate-900/60 rounded-lg border border-slate-800/60">
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-xs font-mono text-slate-400">Resource Quality Rating</span>
+                                        <span class="text-emerald-400 font-bold text-sm" id="extraction-quality-score">92 / 100</span>
+                                    </div>
+                                    <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                                        <div class="bg-gradient-to-r from-emerald-600 to-emerald-400 h-full rounded-full" style="width: 92%"></div>
+                                    </div>
+                                    <p class="text-[10px] font-mono text-slate-500 mt-2">Inherent deposit purity. Premium quality boosts the selling value by +15.8%.</p>
+                                </div>
+
+                                <div class="p-4 bg-slate-900/60 rounded-lg border border-slate-800/60">
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-xs font-mono text-slate-400 font-medium">Daily Extraction Speed</span>
+                                        <span class="text-cyan-400 font-mono font-bold text-xs" id="extraction-speed">850 bbl/day</span>
+                                    </div>
+                                    <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                                        <div class="bg-cyan-500 h-full rounded-full transition-all duration-300 animate-pulse" style="width: 78%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- C) Farm: Crops & Livestock -->
+                    <div id="view-farm" class="hidden flex-1 flex flex-col gap-6">
+                        <div class="flex justify-between items-center border-b border-slate-800/80 pb-3">
+                            <div>
+                                <h3 class="text-sm font-semibold tracking-wide text-slate-200">Agricultural Management</h3>
+                                <p class="text-[11px] text-slate-500 font-mono">Configure crops crop planning and livestock reproduction cycles.</p>
+                            </div>
+                            
+                            <!-- Sub-tabs crops / livestock -->
+                            <div class="flex p-0.5 bg-slate-900 rounded-md border border-slate-800">
+                                <button onclick="toggleFarmTab('CROPS')" id="btn-farm-crops" class="px-3 py-1 text-xs font-mono rounded-md font-semibold transition bg-cyan-600 text-slate-100">CROPS</button>
+                                <button onclick="toggleFarmTab('LIVESTOCK')" id="btn-farm-livestock" class="px-3 py-1 text-xs font-mono rounded-md font-semibold transition text-slate-400 hover:text-slate-200">LIVESTOCK</button>
+                            </div>
+                        </div>
+
+                        <!-- Crops Panel -->
+                        <div id="farm-crops-panel" class="flex-1 flex flex-col md:flex-row gap-6 py-2">
+                            <div class="flex-1 space-y-4">
+                                <h4 class="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider">Crop Schedule</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="p-3 bg-slate-900/60 rounded-lg border border-slate-800 flex items-center justify-between cursor-pointer border-cyan-500/40 bg-slate-900">
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-100">Premium Cotton</p>
+                                            <p class="text-[10px] font-mono text-slate-500 mt-0.5">High Yield | 120 hrs</p>
+                                        </div>
+                                        <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
+                                    </div>
+                                    <div class="p-3 bg-slate-900/20 rounded-lg border border-slate-800/50 flex items-center justify-between hover:border-slate-700 cursor-pointer transition">
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-400">Organic Wheat</p>
+                                            <p class="text-[10px] font-mono text-slate-500 mt-0.5">Low Upkeep | 72 hrs</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="p-4 bg-slate-900/60 rounded-lg border border-slate-800">
+                                    <div class="flex justify-between items-center text-xs font-mono text-slate-400 mb-2">
+                                        <span>Seasonal Weather Multiplier</span>
+                                        <span class="text-emerald-400 font-bold">1.25x (Summer)</span>
+                                    </div>
+                                    <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                                        <div class="bg-emerald-500 h-full rounded-full" style="width: 80%"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="w-full md:w-80 bg-slate-950/30 border border-slate-800/40 rounded-lg p-4 flex flex-col justify-center items-center gap-4 text-center">
+                                <div class="relative w-28 h-28 flex items-center justify-center">
+                                    <svg class="w-full h-full transform -rotate-90">
+                                        <circle cx="56" cy="56" r="48" stroke="#1e293b" stroke-width="6" fill="transparent" />
+                                        <circle cx="56" cy="56" r="48" stroke="#06b6d4" stroke-width="6" fill="transparent" 
+                                            stroke-dasharray="301" stroke-dashoffset="90" id="farm-growth-ring" />
+                                    </svg>
+                                    <div class="absolute flex flex-col items-center">
+                                        <span class="font-outfit text-xl font-bold text-slate-100" id="farm-growth-percent">70%</span>
+                                        <span class="text-[9px] font-mono text-slate-500 uppercase">GROWTH</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-mono text-slate-300">Harvest Stage: <span class="text-cyan-400 font-bold">Blooming</span></p>
+                                    <p class="text-[10px] font-mono text-slate-500 mt-1">Est. harvest in: 18 hours</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Livestock Panel -->
+                        <div id="farm-livestock-panel" class="hidden flex-1 flex flex-col md:flex-row gap-6 py-2">
+                            <div class="flex-1 space-y-4">
+                                <h4 class="text-xs font-mono font-bold text-amber-500 uppercase tracking-wider">Breeding Herd Control</h4>
+                                <div class="p-4 bg-slate-900/60 rounded-lg border border-slate-800 flex justify-between items-center">
+                                    <div>
+                                        <p class="text-xs font-semibold text-slate-200">Premium Beef Cattle</p>
+                                        <p class="text-[10px] font-mono text-slate-500 mt-1">Stock Count: 1,850 heads | Max: 2,500</p>
+                                    </div>
+                                    <span class="px-2 py-1 bg-amber-950 text-amber-400 border border-amber-800 text-[10px] font-mono font-bold rounded">BREEDING ACTIVE</span>
+                                </div>
+
+                                <div class="p-4 bg-slate-900/60 rounded-lg border border-slate-800 space-y-3">
+                                    <div class="flex justify-between items-center text-xs font-mono">
+                                        <span class="text-slate-400">Nutritional Feed Quality Slider</span>
+                                        <span class="text-cyan-400 font-bold" id="livestock-feed-label">Premium Feed (+$850/hr)</span>
+                                    </div>
+                                    <input type="range" class="w-full" min="1" max="3" value="3" oninput="updateFeedQuality(this.value)">
+                                    <p class="text-[10px] font-mono text-slate-500">Higher feed grades accelerate breeding cycles and improve beef quality rating by up to +22%.</p>
+                                </div>
+                            </div>
+
+                            <div class="w-full md:w-80 bg-slate-950/30 border border-slate-800/40 rounded-lg p-4 flex flex-col justify-center items-center gap-4 text-center">
+                                <div class="h-16 w-16 bg-amber-950/20 border border-amber-800/40 rounded-full flex items-center justify-center text-amber-500 animate-pulse">
+                                    <i data-lucide="beef" class="h-8 w-8"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-200">Maturity Progress</p>
+                                    <p class="text-[11px] font-mono text-slate-500 mt-1">Average animal age: 14.8 months</p>
+                                    <p class="text-[11px] font-mono text-amber-500 font-bold mt-2">Next distribution cycle in: 3 days</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- D) Research: R&D Project management -->
+                    <div id="view-research" class="hidden flex-1 flex flex-col gap-6">
+                        <div class="border-b border-slate-800/80 pb-3">
+                            <h3 class="text-sm font-semibold tracking-wide text-slate-200">Research & Development Pipeline</h3>
+                            <p class="text-[11px] text-slate-500 font-mono">Configure investment budgets, duration planning, and monitor technology breakthrough speed.</p>
+                        </div>
+
+                        <div class="flex-1 flex flex-col lg:flex-row gap-6">
+                            <div class="flex-1 space-y-4">
+                                <div class="p-4 bg-slate-900/60 rounded-lg border border-slate-800 flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div class="h-10 w-10 bg-cyan-950/30 border border-cyan-800/30 rounded flex items-center justify-center text-cyan-400">
+                                            <i data-lucide="cpu" class="h-5 w-5"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-200">Silicon Micro-Assembly (Tier 2)</p>
+                                            <p class="text-[10px] font-mono text-slate-500">Est. completion in: 1.2 years</p>
+                                        </div>
+                                    </div>
+                                    <span class="px-2 py-0.5 text-[9px] font-mono font-bold bg-cyan-950 text-cyan-400 border border-cyan-800/40 rounded">ACTIVE RESEARCH</span>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <!-- Slider: Annual Budget -->
+                                    <div class="p-4 bg-slate-900/60 rounded-lg border border-slate-800 space-y-2">
+                                        <div class="flex justify-between items-center text-xs font-mono">
+                                            <span class="text-slate-400">Annual Budget</span>
+                                            <span class="text-cyan-400 font-bold" id="research-budget-label">$1,200,000</span>
+                                        </div>
+                                        <input type="range" class="w-full" min="100000" max="5000000" step="100000" value="1200000" oninput="updateResearchBudget(this.value)">
+                                    </div>
+
+                                    <!-- Slider: Project duration -->
+                                    <div class="p-4 bg-slate-900/60 rounded-lg border border-slate-800 space-y-2">
+                                        <div class="flex justify-between items-center text-xs font-mono">
+                                            <span class="text-slate-400">Target Duration</span>
+                                            <span class="text-cyan-400 font-bold" id="research-duration-label">3 Years</span>
+                                        </div>
+                                        <input type="range" class="w-full" min="1" max="5" value="3" oninput="updateResearchDuration(this.value)">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="w-full lg:w-80 bg-slate-950/30 border border-slate-800/40 rounded-lg p-4 flex flex-col justify-center gap-4">
+                                <h4 class="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">Breakthrough Progress</h4>
+                                <div>
+                                    <div class="flex justify-between text-xs font-mono text-slate-400 mb-1.5">
+                                        <span>Tech Progress</span>
+                                        <span class="text-cyan-400 font-bold" id="research-tech-val">45%</span>
+                                    </div>
+                                    <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                                        <div class="bg-cyan-500 h-full rounded-full transition-all duration-300" id="research-tech-bar" style="width: 45%"></div>
+                                    </div>
+                                    <p class="text-[9px] font-mono text-slate-500 mt-2">Current Lab Power: <span class="text-slate-300 font-bold">148 points/hr</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- E) Real Estate: Occupancy & Rent -->
+                    <div id="view-real_estate" class="hidden flex-1 flex flex-col gap-6">
+                        <div class="border-b border-slate-800/80 pb-3">
+                            <h3 class="text-sm font-semibold tracking-wide text-slate-200">Real Estate Assets & Tenancy</h3>
+                            <p class="text-[11px] text-slate-500 font-mono">Configure residential rent limits, monitor structure decay scores, and resolve building issues.</p>
+                        </div>
+
+                        <div class="flex-1 flex flex-col md:flex-row gap-6">
+                            <div class="flex-1 space-y-5">
+                                <!-- Occupancy Rate Meter -->
+                                <div class="p-4 bg-slate-900/60 rounded-lg border border-slate-800">
+                                    <div class="flex justify-between items-center mb-1.5">
+                                        <span class="text-xs font-mono text-slate-400">Tenancy Occupancy Rate</span>
+                                        <span class="text-emerald-400 font-bold text-sm" id="realestate-occupancy-val">86%</span>
+                                    </div>
+                                    <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                                        <div class="bg-emerald-500 h-full rounded-full transition-all duration-300" id="realestate-occupancy-bar" style="width: 86%"></div>
+                                    </div>
+                                    <p class="text-[10px] font-mono text-slate-500 mt-2">Active Tenants: <span class="text-slate-300 font-semibold" id="realestate-tenants">43 / 50</span> Units occupied.</p>
+                                </div>
+
+                                <!-- Rent Slider -->
+                                <div class="p-4 bg-slate-900/60 rounded-lg border border-slate-800 space-y-2">
+                                    <div class="flex justify-between items-center text-xs font-mono">
+                                        <span class="text-slate-400">Monthly Rent Rate</span>
+                                        <span class="text-cyan-400 font-bold" id="realestate-rent-label">$1,200 / unit</span>
+                                    </div>
+                                    <input type="range" class="w-full" min="400" max="2500" step="50" value="1200" oninput="updateRentLevel(this.value)">
+                                    <p class="text-[10px] font-mono text-slate-500">Rent rates directly influence resident retention. Overpricing leads to swift lease terminations.</p>
+                                </div>
+                            </div>
+
+                            <!-- Right: Upkeep alert -->
+                            <div class="w-full md:w-80 bg-slate-950/30 border border-slate-800/40 rounded-lg p-4 flex flex-col justify-between" id="maintenance-panel">
+                                <div>
+                                    <h4 class="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider mb-3">Structure Maintenance</h4>
+                                    
+                                    <div class="flex items-center gap-3 mb-4">
+                                        <div class="h-10 w-10 bg-rose-950/20 border border-rose-800/40 text-rose-500 rounded flex items-center justify-center" id="maint-alert-icon">
+                                            <i data-lucide="alert-triangle" class="h-5 w-5 animate-bounce"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-200">Maintenance Score: <span class="text-rose-400" id="maint-score">45%</span></p>
+                                            <p class="text-[10px] font-mono text-rose-400/90 font-medium" id="maint-warning-msg">URGENT RENOVATION REQUIRED</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button onclick="renovateBuilding()" class="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-slate-950 font-outfit font-bold rounded shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 transition flex justify-center items-center gap-2">
+                                    <i data-lucide="wrench" class="h-4 w-4"></i>
+                                    RENOVATE STRUCTURE ($25,000)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- F) HQ: Headquarters details -->
+                    <div id="view-hq" class="hidden flex-1 flex flex-col gap-6">
+                        <div class="border-b border-slate-800/80 pb-3">
+                            <h3 class="text-sm font-semibold tracking-wide text-slate-200">Corporate Headquarters Boardroom</h3>
+                            <p class="text-[11px] text-slate-500 font-mono">Central operations panel distributing authority buffs and global efficiency boosts.</p>
+                        </div>
+
+                        <div class="flex-1 grid grid-cols-2 gap-4 py-2">
+                            <div class="p-4 bg-slate-900/40 border border-slate-800/80 rounded-lg flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="h-9 w-9 bg-slate-850 border border-slate-850 rounded flex items-center justify-center text-slate-400">
+                                        <i data-lucide="users" class="h-4 w-4"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-semibold text-slate-200">Human Resources Department</p>
+                                        <p class="text-[10px] font-mono text-slate-500">Staff Morale Bonus: +12%</p>
+                                    </div>
+                                </div>
+                                <span class="px-2 py-0.5 text-[9px] font-mono font-bold bg-slate-850 text-slate-400 rounded">MAX LEVEL</span>
+                            </div>
+
+                            <div class="p-4 bg-slate-900/40 border border-slate-800/80 rounded-lg flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="h-9 w-9 bg-cyan-950/20 border border-cyan-800/30 rounded flex items-center justify-center text-cyan-400">
+                                        <i data-lucide="trending-up" class="h-4 w-4"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-semibold text-slate-200">Finance & Capital Optimization</p>
+                                        <p class="text-[10px] font-mono text-slate-500">Tax Deductions: +15%</p>
+                                    </div>
+                                </div>
+                                <button class="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-outfit font-bold text-[10px] rounded transition">UPGRADE ($80K)</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Section 3: Dolny Pasek Akcji (Bottom Action Bar) -->
+                <div class="glass-panel rounded-xl p-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+                    <button onclick="demolishBuilding()" class="px-4 py-2.5 bg-rose-950/20 hover:bg-rose-950/40 text-rose-400 hover:text-rose-300 font-mono text-xs font-semibold rounded border border-rose-800/30 hover:border-rose-800/60 transition flex items-center gap-2">
+                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                        DEMOLISH FIRM
+                    </button>
+
+                    <div class="flex gap-3 w-full sm:w-auto">
+                        <button onclick="toggleSuspendOperations()" id="btn-suspend" class="flex-1 sm:flex-none px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 font-mono text-xs font-semibold transition flex items-center justify-center gap-2">
+                            <i data-lucide="power" class="h-4 w-4"></i>
+                            <span id="suspend-btn-text">SUSPEND OPERATIONS</span>
+                        </button>
+                        
+                        <button onclick="applyTemplateToAll()" class="flex-1 sm:flex-none px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-outfit font-bold text-xs rounded transition flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20">
+                            <i data-lucide="copy" class="h-4 w-4"></i>
+                            APPLY TEMPLATE TO ALL
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <!-- Custom Notification Toast -->
+    <div id="toast-notification" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 px-5 py-3 bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 rounded-lg shadow-2xl flex items-center gap-3 opacity-0 pointer-events-none transition-all duration-300 z-50">
+        <i data-lucide="check-circle" class="h-4 w-4 text-emerald-400 shrink-0"></i>
+        <span id="toast-message">Template settings applied to similar structures.</span>
+    </div>
+
+    <!-- Confirmation Overlay Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center z-[100] p-4">
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl max-w-sm w-full space-y-4">
+            <div class="flex items-center gap-3 text-rose-400">
+                <i data-lucide="alert-octagon" class="h-6 w-6"></i>
+                <h4 class="font-outfit font-bold text-base text-slate-200">Confirm Demolition</h4>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed">Are you absolutely sure you want to demolish <span class="font-bold text-slate-200" id="demolish-building-name">MegaMart Store #4</span>? This operation is permanent and refunds only 30% of the asset cost.</p>
+            <div class="flex justify-end gap-3 pt-2">
+                <button onclick="closeDemolishModal()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-300 text-xs font-mono rounded transition">CANCEL</button>
+                <button onclick="executeDemolish()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-slate-950 font-outfit font-bold text-xs rounded transition">CONFIRM DEMOLISH</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script: Main Front-End Simulation Logic -->
+    <script>
+        // Mock dataset representing 7 distinct building types (Firms)
+        const mockFirms = [
+            {
+                id: "firm-1",
+                type: "RETAIL",
+                name: "MegaMart Store #4",
+                x: 14,
+                y: 62,
+                isOperational: true,
+                efficiency: 89.4,
+                upkeepCostPerHour: 4200,
+                revenuePerHour: 18450,
+                netProfitPerHour: 14250,
+                financialHistory: Array.from({length: 10}, (_, i) => ({ timestamp: `${10-i}h ago`, revenue: 16000 + Math.random()*3000, profit: 12000 + Math.random()*2500 })),
+                triad: { price: 85, quality: 92, brand: 78 },
+                retailDetails: { inputBlockId: "block-1", outputBlockId: "block-2", profitMarginPercent: 24.5 }
+            },
+            {
+                id: "firm-2",
+                type: "MANUFACTURING",
+                name: "Apex Electronics Assembly",
+                x: 82,
+                y: 45,
+                isOperational: true,
+                efficiency: 74.2,
+                upkeepCostPerHour: 12500,
+                revenuePerHour: 48900,
+                netProfitPerHour: 36400,
+                financialHistory: Array.from({length: 10}, (_, i) => ({ timestamp: `${10-i}h ago`, revenue: 42000 + Math.random()*8000, profit: 30000 + Math.random()*7000 })),
+                triad: { price: 76, quality: 84, brand: 60 },
+                manufacturingDetails: { recipeName: "Desktop Computers", recipeIngredients: ["Silicon Microchips", "Steel Chassis", "Wiring Harness"] }
+            },
+            {
+                id: "firm-3",
+                type: "EXTRACTION",
+                name: "Permian Basin Oil Slick",
+                x: 48,
+                y: 28,
+                isOperational: true,
+                efficiency: 95.0,
+                upkeepCostPerHour: 8500,
+                revenuePerHour: 22000,
+                netProfitPerHour: 13500,
+                financialHistory: Array.from({length: 10}, (_, i) => ({ timestamp: `${10-i}h ago`, revenue: 20000 + Math.random()*3000, profit: 11000 + Math.random()*2500 })),
+                extractionDetails: { remainingReserves: 420000, initialReserves: 600000, resourceQuality: 92, depletionRatePerHour: 35.4, resourceName: "Crude Oil" }
+            },
+            {
+                id: "firm-4",
+                type: "FARM",
+                name: "Green Valley Bio-Farm",
+                x: 105,
+                y: 18,
+                isOperational: true,
+                efficiency: 81.6,
+                upkeepCostPerHour: 2400,
+                revenuePerHour: 7800,
+                netProfitPerHour: 5400,
+                financialHistory: Array.from({length: 10}, (_, i) => ({ timestamp: `${10-i}h ago`, revenue: 7000 + Math.random()*1500, profit: 4500 + Math.random()*1200 })),
+                farmDetails: { activeTab: "CROPS", cropType: "Premium Cotton", livestockType: "Beef Cattle", growthProgress: 70, feedQualityLevel: 3 }
+            },
+            {
+                id: "firm-5",
+                type: "RESEARCH",
+                name: "Neuro-Interface Lab",
+                x: 35,
+                y: 72,
+                isOperational: true,
+                efficiency: 90.0,
+                upkeepCostPerHour: 18000,
+                revenuePerHour: 0,
+                netProfitPerHour: -18000,
+                financialHistory: Array.from({length: 10}, (_, i) => ({ timestamp: `${10-i}h ago`, revenue: 0, profit: -18000 })),
+                researchDetails: { activeProjectName: "Silicon Micro-Assembly (Tier 2)", annualBudget: 1200000, targetDurationYears: 3, techLevelProgress: 45 }
+            },
+            {
+                id: "firm-6",
+                type: "REAL_ESTATE",
+                name: "Cyber-Apartments Block A",
+                x: 52,
+                y: 88,
+                isOperational: true,
+                efficiency: 86.0,
+                upkeepCostPerHour: 6500,
+                revenuePerHour: 24500,
+                netProfitPerHour: 18000,
+                financialHistory: Array.from({length: 10}, (_, i) => ({ timestamp: `${10-i}h ago`, revenue: 23000 + Math.random()*2000, profit: 16000 + Math.random()*1800 })),
+                realEstateDetails: { occupancyRate: 86, rentLevel: 1200, maintenanceScore: 45, alertState: true }
+            },
+            {
+                id: "firm-7",
+                type: "HQ",
+                name: "Omni Corp Headquarters",
+                x: 60,
+                y: 60,
+                isOperational: true,
+                efficiency: 100.0,
+                upkeepCostPerHour: 45000,
+                revenuePerHour: 0,
+                netProfitPerHour: -45000,
+                financialHistory: Array.from({length: 10}, (_, i) => ({ timestamp: `${10-i}h ago`, revenue: 0, profit: -45000 })),
+                hqDetails: { globalMoraleBonus: 12, financeTaxBonus: 15 }
+            }
+        ];
+
+        let activeFirmIndex = 0;
+        let selectedBlockId = "block-1";
+
+        // Predefined grid layouts for Retail/Manufacturing
+        const retailLayout = [
+            { id: "block-1", row: 1, col: 0, type: "INPUT", name: "Purchasing Department", supply: 95, demand: 40, utilization: 90, productName: "Cotton textiles" },
+            { id: "block-2", row: 1, col: 2, type: "OUTPUT", name: "Sales Department", supply: 90, demand: 85, utilization: 84, productName: "Textiles Sales" }
+        ];
+
+        const manufacturingLayout = [
+            { id: "block-1", row: 0, col: 0, type: "INPUT", name: "Steel Purchasing", supply: 98, demand: 50, utilization: 92, productName: "Steel Chassis" },
+            { id: "block-3", row: 2, col: 0, type: "INPUT", name: "Circuits Purchasing", supply: 88, demand: 45, utilization: 72, productName: "Microchips" },
+            { id: "block-4", row: 1, col: 1, type: "PROCESSING", name: "Main Assembly", supply: 80, demand: 75, utilization: 84 },
+            { id: "block-5", row: 1, col: 2, type: "OUTPUT", name: "Warehouse Inventory", supply: 75, demand: 80, utilization: 78, productName: "Finished PCs" }
+        ];
+
+        // Init page load
+        window.addEventListener('load', () => {
+            renderFirmsSidebar();
+            loadFirmDetails(activeFirmIndex);
+            
+            // Periodically update active simulation variables slightly to make it feel "alive"
+            setInterval(simulationTick, 2000);
+        });
+
+        // Populate Sidebar list
+        function renderFirmsSidebar() {
+            const list = document.getElementById("building-list");
+            list.innerHTML = "";
+
+            mockFirms.forEach((firm, index) => {
+                const isActive = index === activeFirmIndex;
+                const activeClasses = isActive 
+                    ? "bg-slate-900 border-cyan-500/50 shadow-md shadow-cyan-500/5" 
+                    : "bg-slate-900/30 border-slate-800 hover:border-slate-700/80";
+
+                const dotColor = firm.isOperational 
+                    ? (firm.type === 'REAL_ESTATE' && firm.realEstateDetails.alertState ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500') 
+                    : 'bg-rose-500';
+
+                const typeLabels = {
+                    RETAIL: "Retail Outlet",
+                    MANUFACTURING: "Assembly Factory",
+                    EXTRACTION: "Raw Extraction",
+                    FARM: "Agrarian Farm",
+                    RESEARCH: "Research & Development",
+                    REAL_ESTATE: "Real Estate Asset",
+                    HQ: "Headquarters"
+                };
+
+                const div = document.createElement("div");
+                div.className = `p-3 border rounded-lg flex items-center justify-between cursor-pointer transition ${activeClasses}`;
+                div.onclick = () => selectFirm(index);
+
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="h-8 w-8 bg-slate-950 border border-slate-800 rounded flex items-center justify-center ${isActive ? 'text-cyan-400' : 'text-slate-400'}">
+                            <i data-lucide="${getIconName(firm.type)}" class="h-4 w-4"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-200 max-w-[140px] truncate">${firm.name}</p>
+                            <p class="text-[9px] font-mono text-slate-500 mt-0.5">${typeLabels[firm.type]}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-mono font-bold ${firm.netProfitPerHour >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+                            ${firm.netProfitPerHour >= 0 ? '+' : ''}${(firm.netProfitPerHour/1000).toFixed(1)}K
+                        </span>
+                        <span class="h-2 w-2 rounded-full ${dotColor}"></span>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+            lucide.createIcons();
+            document.getElementById("firms-count").innerText = `${mockFirms.length} Firms`;
+        }
+
+        function getIconName(type) {
+            switch(type) {
+                case "RETAIL": return "store";
+                case "MANUFACTURING": return "factory";
+                case "EXTRACTION": return "droplets";
+                case "FARM": return "sprout";
+                case "RESEARCH": return "flask";
+                case "REAL_ESTATE": return "home";
+                case "HQ": return "briefcase";
+                default: return "building";
+            }
+        }
+
+        // Toggle selected building
+        function selectFirm(index) {
+            activeFirmIndex = index;
+            renderFirmsSidebar();
+            loadFirmDetails(index);
+        }
+
+        // Dynamic Details Renderer
+        function loadFirmDetails(index) {
+            const firm = mockFirms[index];
+            
+            // Name inputs
+            document.getElementById("building-title-input").value = firm.name;
+            document.getElementById("building-coords").innerText = `GRID COORDINATES: [${firm.x}, ${firm.y}]`;
+            
+            // Title types
+            const typeBadges = {
+                RETAIL: "RETAIL OUTLET",
+                MANUFACTURING: "MANUFACTURING FACTORY",
+                EXTRACTION: "RAW RESOURCES EXTRACTION",
+                FARM: "AGRICULTURAL FARM",
+                RESEARCH: "R&D FACILITY",
+                REAL_ESTATE: "REAL ESTATE DEVELOPMENT",
+                HQ: "CORPORATE HEADQUARTERS"
+            };
+            document.getElementById("building-type-badge").innerText = typeBadges[firm.type];
+
+            // Badge icon updates
+            const iconBadge = document.getElementById("building-icon-badge");
+            iconBadge.innerHTML = `<i data-lucide="${getIconName(firm.type)}" class="h-6 w-6"></i>`;
+            
+            // Operational updates
+            const statusDot = document.getElementById("building-status-dot");
+            const statusText = document.getElementById("building-status-text");
+            const suspendBtnText = document.getElementById("suspend-btn-text");
+            
+            if (firm.isOperational) {
+                statusDot.className = "h-1.5 w-1.5 rounded-full bg-emerald-500";
+                statusText.innerText = "OPERATIONAL";
+                statusText.className = "text-emerald-400";
+                suspendBtnText.innerText = "SUSPEND OPERATIONS";
+            } else {
+                statusDot.className = "h-1.5 w-1.5 rounded-full bg-rose-500";
+                statusText.innerText = "SUSPENDED";
+                statusText.className = "text-rose-500";
+                suspendBtnText.innerText = "RESUME OPERATIONS";
+            }
+
+            // Upkeep, revenue, profit header variables
+            updateFinancialHeaderDisplay(firm);
+
+            // Draw sparklines
+            drawCanvasSparkline("sparkline-revenue", firm.financialHistory.map(h => h.revenue), '#10b981');
+            drawCanvasSparkline("sparkline-upkeep", firm.financialHistory.map(h => h.revenue > 0 ? firm.upkeepCostPerHour : firm.upkeepCostPerHour * 0.2), '#f43f5e');
+            drawCanvasSparkline("sparkline-efficiency", firm.financialHistory.map(h => firm.isOperational ? firm.efficiency + Math.random()*2 : 0), '#06b6d4');
+
+            // Hide all views first
+            document.getElementById("view-matrix").classList.add("hidden");
+            document.getElementById("view-extraction").classList.add("hidden");
+            document.getElementById("view-farm").classList.add("hidden");
+            document.getElementById("view-research").classList.add("hidden");
+            document.getElementById("view-real_estate").classList.add("hidden");
+            document.getElementById("view-hq").classList.add("hidden");
+
+            // Load view components based on active firm type
+            if (firm.type === "RETAIL" || firm.type === "MANUFACTURING") {
+                document.getElementById("view-matrix").classList.remove("hidden");
+                loadMatrixView(firm);
+            } else if (firm.type === "EXTRACTION") {
+                document.getElementById("view-extraction").classList.remove("hidden");
+                loadExtractionView(firm);
+            } else if (firm.type === "FARM") {
+                document.getElementById("view-farm").classList.remove("hidden");
+                loadFarmView(firm);
+            } else if (firm.type === "RESEARCH") {
+                document.getElementById("view-research").classList.remove("hidden");
+                loadResearchView(firm);
+            } else if (firm.type === "REAL_ESTATE") {
+                document.getElementById("view-real_estate").classList.remove("hidden");
+                loadRealEstateView(firm);
+            } else if (firm.type === "HQ") {
+                document.getElementById("view-hq").classList.remove("hidden");
+            }
+            
+            // Wire rename handler
+            const titleInput = document.getElementById("building-title-input");
+            titleInput.onblur = () => {
+                firm.name = titleInput.value;
+                renderFirmsSidebar();
+            };
+            titleInput.onkeydown = (e) => {
+                if (e.key === "Enter") {
+                    titleInput.blur();
+                }
+            };
+
+            lucide.createIcons();
+        }
+
+        // Upkeep & revenue calculation text
+        function updateFinancialHeaderDisplay(firm) {
+            const rev = firm.isOperational ? firm.revenuePerHour : 0;
+            const upkeep = firm.isOperational ? firm.upkeepCostPerHour : firm.upkeepCostPerHour * 0.2;
+            const profit = rev - upkeep;
+            
+            firm.netProfitPerHour = profit;
+
+            document.getElementById("header-revenue").innerText = `$${rev.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById("header-upkeep").innerText = `-$${upkeep.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById("header-efficiency").innerText = `${firm.isOperational ? firm.efficiency.toFixed(1) : '0.0'}%`;
+            
+            // Update indicator text styling
+            document.getElementById("header-revenue").className = `font-outfit text-base font-bold ${rev > 0 ? 'text-emerald-400' : 'text-slate-400'}`;
+        }
+
+        // Draw simple sparklines on canvas
+        function drawCanvasSparkline(canvasId, data, color) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext("2d");
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (data.length === 0) return;
+            
+            const max = Math.max(...data, 100);
+            const min = Math.min(...data, 0);
+            const range = max - min;
+            
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            
+            const step = canvas.width / (data.length - 1);
+            
+            data.forEach((val, index) => {
+                const x = index * step;
+                const y = canvas.height - ((val - min) / range) * (canvas.height - 4) - 2;
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+        }
+
+        // MATRIX 3x3 LAYOUT DRAWER
+        function loadMatrixView(firm) {
+            const container = document.getElementById("matrix-grid-container");
+            container.innerHTML = "";
+
+            const layout = firm.type === "RETAIL" ? retailLayout : manufacturingLayout;
+            
+            // Configure triad panel
+            document.getElementById("triad-panel").classList.remove("hidden");
+            document.getElementById("triad-price").innerText = firm.triad.price;
+            document.getElementById("triad-quality").innerText = firm.triad.quality;
+            document.getElementById("triad-brand").innerText = firm.triad.brand;
+
+            // Generate 3x3 layout cell boxes
+            for (let r = 0; r < 3; r++) {
+                for (let c = 0; c < 3; c++) {
+                    const block = layout.find(b => b.row === r && b.col === c);
+                    const cell = document.createElement("div");
+                    
+                    if (block) {
+                        const isSelected = block.id === selectedBlockId;
+                        const borderClass = isSelected ? "border-cyan-500 shadow-md shadow-cyan-500/10" : "border-slate-800 hover:border-slate-700";
+                        const activeBg = isSelected ? "bg-slate-900" : "bg-slate-900/40";
+                        
+                        cell.className = `border rounded-md p-2 flex flex-col justify-between cursor-pointer text-left transition select-none relative z-10 ${borderClass} ${activeBg}`;
+                        cell.onclick = () => selectBlock(block.id);
+
+                        const colorType = {
+                            INPUT: "text-cyan-400 bg-cyan-950/20 border-cyan-800/40",
+                            PROCESSING: "text-amber-500 bg-amber-950/20 border-amber-800/40",
+                            OUTPUT: "text-emerald-400 bg-emerald-950/20 border-emerald-800/40"
+                        };
+
+                        cell.innerHTML = `
+                            <div class="flex items-center justify-between">
+                                <span class="text-[8px] font-mono px-1 border rounded uppercase font-bold ${colorType[block.type]}">${block.type}</span>
+                                <span class="h-1.5 w-1.5 rounded-full ${firm.isOperational ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+                            </div>
+                            <div class="my-1.5">
+                                <p class="text-[10px] font-outfit font-bold text-slate-200 leading-tight">${block.name}</p>
+                                ${block.productName ? `<p class="text-[8px] font-mono text-cyan-500/80 mt-0.5 truncate">${block.productName}</p>` : ''}
+                            </div>
+                            <!-- Mini Progress dots -->
+                            <div class="flex gap-1">
+                                <div class="flex-1 bg-slate-950 h-1 rounded-full overflow-hidden" title="Supply: ${block.supply}%">
+                                    <div class="bg-cyan-500 h-full" style="width: ${firm.isOperational ? block.supply : 0}%"></div>
+                                </div>
+                                <div class="flex-1 bg-slate-950 h-1 rounded-full overflow-hidden" title="Demand: ${block.demand}%">
+                                    <div class="bg-amber-500 h-full" style="width: ${firm.isOperational ? block.demand : 0}%"></div>
+                                </div>
+                                <div class="flex-1 bg-slate-950 h-1 rounded-full overflow-hidden" title="Utilization: ${block.utilization}%">
+                                    <div class="bg-emerald-500 h-full" style="width: ${firm.isOperational ? block.utilization : 0}%"></div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        // Empty slot
+                        cell.className = "border border-slate-900/30 border-dashed rounded-md bg-slate-950/10 flex items-center justify-center text-slate-700 text-[10px] font-mono z-10";
+                        cell.innerText = "[EMPTY]";
+                    }
+                    container.appendChild(cell);
+                }
+            }
+
+            // Draw line connections in SVG
+            drawGridConnectors(layout);
+            
+            // Set first block detail on loading view
+            if (!layout.some(b => b.id === selectedBlockId)) {
+                selectedBlockId = layout[0].id;
+            }
+            selectBlock(selectedBlockId);
+        }
+
+        // Draw layout SVG connecting lines between functional stages
+        function drawGridConnectors(layout) {
+            const svg = document.getElementById("matrix-svg");
+            svg.innerHTML = "";
+            
+            // Standard paths connecting INPUT -> PROCESSING -> OUTPUT
+            if (layout.length <= 2) {
+                // Retail connection: straight line from Left [Block 1, Col 0] to Right [Block 2, Col 2]
+                drawArrow(svg, 56, 170, 284, 170);
+            } else {
+                // Manufacturing: Top Input (56, 56) -> Processing (170, 170), Bottom Input (56, 284) -> Processing (170, 170) -> Output (284, 170)
+                drawArrow(svg, 56, 56, 170, 170);
+                drawArrow(svg, 56, 284, 170, 170);
+                drawArrow(svg, 170, 170, 284, 170);
+            }
+        }
+
+        function drawArrow(svg, x1, y1, x2, y2) {
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", x1);
+            line.setAttribute("y1", y1);
+            line.setAttribute("x2", x2);
+            line.setAttribute("y2", y2);
+            line.setAttribute("stroke", "rgba(6, 182, 212, 0.25)");
+            line.setAttribute("stroke-width", "2");
+            line.setAttribute("stroke-dasharray", "4");
+            
+            // Add a simple pulsing effect with svg animations
+            const animate = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+            animate.setAttribute("attributeName", "stroke-dashoffset");
+            animate.setAttribute("values", "10;0");
+            animate.setAttribute("dur", "2s");
+            animate.setAttribute("repeatCount", "indefinite");
+            line.appendChild(animate);
+            
+            svg.appendChild(line);
+        }
+
+        // Select specific matrix block
+        function selectBlock(id) {
+            selectedBlockId = id;
+            
+            // Re-render highlight borders on matrix grid
+            const firm = mockFirms[activeFirmIndex];
+            const layout = firm.type === "RETAIL" ? retailLayout : manufacturingLayout;
+            const block = layout.find(b => b.id === id);
+            
+            if (!block) return;
+            
+            // Re-render blocks list borders
+            loadMatrixView(firm);
+
+            // Update inspector details panel
+            document.getElementById("inspector-block-name").innerText = block.name;
+            document.getElementById("inspector-block-type").innerText = `${block.type} BLOCK`;
+            document.getElementById("inspector-block-id").innerText = `BLOCK: #${block.id.toUpperCase()}`;
+            
+            const isOp = firm.isOperational;
+            document.getElementById("inspector-supply-value").innerText = `${isOp ? block.supply : 0}%`;
+            document.getElementById("inspector-supply-bar").style.width = `${isOp ? block.supply : 0}%`;
+            
+            document.getElementById("inspector-demand-value").innerText = `${isOp ? block.demand : 0}%`;
+            document.getElementById("inspector-demand-bar").style.width = `${isOp ? block.demand : 0}%`;
+            
+            document.getElementById("inspector-utilization-value").innerText = `${isOp ? block.utilization : 0}%`;
+            document.getElementById("inspector-utilization-bar").style.width = `${isOp ? block.utilization : 0}%`;
+
+            const linkageText = block.type === "INPUT" 
+                ? `Imports from: ${block.productName || 'Global Market'}` 
+                : block.type === "PROCESSING" ? "Processing inputs to final goods" : `Selling: ${block.productName || 'Goods'}`;
+            document.getElementById("inspector-linkage-text").innerText = linkageText;
+        }
+
+        // B) Extraction View Details
+        function loadExtractionView(firm) {
+            document.getElementById("triad-panel").classList.add("hidden");
+            const details = firm.extractionDetails;
+            
+            const reservesPercent = Math.round((details.remainingReserves / details.initialReserves) * 100);
+            
+            // Set circle dash offsets (dasharray: 440)
+            const ring = document.getElementById("extraction-reserves-ring");
+            const dashOffset = 440 - (440 * (firm.isOperational ? reservesPercent : 0)) / 100;
+            ring.setAttribute("stroke-dashoffset", dashOffset);
+            
+            document.getElementById("extraction-reserves-percent").innerText = `${firm.isOperational ? reservesPercent : 0}%`;
+            document.getElementById("extraction-reserves-val").innerText = `${details.remainingReserves.toLocaleString()} / ${details.initialReserves.toLocaleString()} Barrels`;
+            
+            document.getElementById("extraction-quality-score").innerText = `${details.resourceQuality} / 100`;
+            
+            const speed = firm.isOperational ? (details.depletionRatePerHour * 24).toFixed(0) : 0;
+            document.getElementById("extraction-speed").innerText = `${speed} bbl/day`;
+            
+            const exhaustion = firm.isOperational ? `${Math.ceil(details.remainingReserves / (details.depletionRatePerHour * 24 * 30))} months` : "SUSPENDED";
+            document.getElementById("extraction-exhaustion").innerText = exhaustion;
+        }
+
+        // C) Farm View Details
+        let farmTab = "CROPS";
+        function loadFarmView(firm) {
+            document.getElementById("triad-panel").classList.add("hidden");
+            const details = firm.farmDetails;
+            
+            farmTab = details.activeTab;
+            
+            if (farmTab === "CROPS") {
+                document.getElementById("farm-crops-panel").classList.remove("hidden");
+                document.getElementById("farm-livestock-panel").classList.add("hidden");
+                
+                document.getElementById("btn-farm-crops").className = "px-3 py-1 text-xs font-mono rounded-md font-semibold transition bg-cyan-600 text-slate-100";
+                document.getElementById("btn-farm-livestock").className = "px-3 py-1 text-xs font-mono rounded-md font-semibold transition text-slate-400 hover:text-slate-200";
+
+                const growth = firm.isOperational ? details.growthProgress : 0;
+                document.getElementById("farm-growth-percent").innerText = `${growth}%`;
+                // circle dasharray: 301
+                document.getElementById("farm-growth-ring").setAttribute("stroke-dashoffset", 301 - (301 * growth) / 100);
+            } else {
+                document.getElementById("farm-crops-panel").classList.add("hidden");
+                document.getElementById("farm-livestock-panel").classList.remove("hidden");
+                
+                document.getElementById("btn-farm-crops").className = "px-3 py-1 text-xs font-mono rounded-md font-semibold transition text-slate-400 hover:text-slate-200";
+                document.getElementById("btn-farm-livestock").className = "px-3 py-1 text-xs font-mono rounded-md font-semibold transition bg-amber-600 text-slate-100";
+
+                updateFeedQuality(details.feedQualityLevel);
+            }
+        }
+
+        function toggleFarmTab(tab) {
+            const firm = mockFirms[activeFirmIndex];
+            firm.farmDetails.activeTab = tab;
+            loadFarmView(firm);
+        }
+
+        function updateFeedQuality(level) {
+            const firm = mockFirms[activeFirmIndex];
+            firm.farmDetails.feedQualityLevel = parseInt(level);
+            
+            const labels = ["Standard Feed (+$120/hr)", "Fortified Feed (+$400/hr)", "Premium Feed (+$850/hr)"];
+            document.getElementById("livestock-feed-label").innerText = labels[level - 1];
+            
+            firm.upkeepCostPerHour = 2400 + (level * 300);
+            updateFinancialHeaderDisplay(firm);
+        }
+
+        // D) Research View Details
+        function loadResearchView(firm) {
+            document.getElementById("triad-panel").classList.add("hidden");
+            const details = firm.researchDetails;
+            
+            const progress = firm.isOperational ? details.techLevelProgress : 0;
+            document.getElementById("research-tech-val").innerText = `${progress}%`;
+            document.getElementById("research-tech-bar").style.width = `${progress}%`;
+            
+            document.getElementById("research-budget-label").innerText = `$${details.annualBudget.toLocaleString()}`;
+            document.getElementById("research-duration-label").innerText = `${details.targetDurationYears} Years`;
+        }
+
+        function updateResearchBudget(budget) {
+            const firm = mockFirms[activeFirmIndex];
+            firm.researchDetails.annualBudget = parseInt(budget);
+            document.getElementById("research-budget-label").innerText = `$${firm.researchDetails.annualBudget.toLocaleString()}`;
+            
+            firm.upkeepCostPerHour = Math.round(firm.researchDetails.annualBudget / (365 * 24));
+            updateFinancialHeaderDisplay(firm);
+        }
+
+        function updateResearchDuration(years) {
+            const firm = mockFirms[activeFirmIndex];
+            firm.researchDetails.targetDurationYears = parseInt(years);
+            document.getElementById("research-duration-label").innerText = `${years} Years`;
+        }
+
+        // E) Real Estate View Details
+        function loadRealEstateView(firm) {
+            document.getElementById("triad-panel").classList.add("hidden");
+            const details = firm.realEstateDetails;
+            
+            const isOp = firm.isOperational;
+            const occ = isOp ? details.occupancyRate : 0;
+            document.getElementById("realestate-occupancy-val").innerText = `${occ}%`;
+            document.getElementById("realestate-occupancy-bar").style.width = `${occ}%`;
+            document.getElementById("realestate-tenants").innerText = `${Math.round(50 * occ / 100)} / 50`;
+            
+            document.getElementById("realestate-rent-label").innerText = `$${details.rentLevel} / unit`;
+            
+            document.getElementById("maint-score").innerText = `${details.maintenanceScore}%`;
+            
+            // Warnings config
+            const panel = document.getElementById("maintenance-panel");
+            const badge = document.getElementById("maint-alert-icon");
+            const warnText = document.getElementById("maint-warning-msg");
+            
+            if (details.maintenanceScore < 50) {
+                panel.className = "w-full md:w-80 bg-rose-950/10 border border-rose-900/30 rounded-lg p-4 flex flex-col justify-between";
+                badge.className = "h-10 w-10 bg-rose-950/40 border border-rose-800/40 text-rose-500 rounded flex items-center justify-center";
+                warnText.innerText = "URGENT RENOVATION REQUIRED";
+                warnText.className = "text-[10px] font-mono text-rose-500 font-bold";
+            } else {
+                panel.className = "w-full md:w-80 bg-slate-950/30 border border-slate-800/40 rounded-lg p-4 flex flex-col justify-between";
+                badge.className = "h-10 w-10 bg-slate-900/60 border border-slate-800/50 text-slate-500 rounded flex items-center justify-center";
+                warnText.innerText = "STRUCTURAL INTEGRITY GOOD";
+                warnText.className = "text-[10px] font-mono text-slate-400 font-medium";
+            }
+        }
+
+        function updateRentLevel(rent) {
+            const firm = mockFirms[activeFirmIndex];
+            firm.realEstateDetails.rentLevel = parseInt(rent);
+            document.getElementById("realestate-rent-label").innerText = `$${rent} / unit`;
+            
+            // Adjust occupancy rate dynamically based on rent rate relative to target average ($1200)
+            const factor = 1200 / rent;
+            firm.realEstateDetails.occupancyRate = Math.min(100, Math.round(92 * factor));
+            
+            // Recalculate monthly revenue
+            firm.revenuePerHour = Math.round((firm.realEstateDetails.occupancyRate / 100) * 50 * rent / 720);
+            updateFinancialHeaderDisplay(firm);
+            loadRealEstateView(firm);
+        }
+
+        function renovateBuilding() {
+            const firm = mockFirms[activeFirmIndex];
+            if (firm.realEstateDetails.maintenanceScore === 100) {
+                showToast("Structure is already fully renovated.");
+                return;
+            }
+            firm.realEstateDetails.maintenanceScore = 100;
+            firm.realEstateDetails.alertState = false;
+            showToast("Renovation complete. Upkeep rating restored to 100%.");
+            loadFirmDetails(activeFirmIndex);
+            renderFirmsSidebar();
+        }
+
+        // F) Bottom Action bar functionalities
+        function toggleSuspendOperations() {
+            const firm = mockFirms[activeFirmIndex];
+            firm.isOperational = !firm.isOperational;
+            
+            showToast(firm.isOperational ? `${firm.name} resumed operations.` : `${firm.name} suspended.`);
+            loadFirmDetails(activeFirmIndex);
+            renderFirmsSidebar();
+        }
+
+        function applyTemplateToAll() {
+            const firm = mockFirms[activeFirmIndex];
+            showToast(`Layout structure template applied to all ${firm.type} firms.`);
+        }
+
+        // Demolition modals
+        function demolishBuilding() {
+            const firm = mockFirms[activeFirmIndex];
+            document.getElementById("demolish-building-name").innerText = firm.name;
+            document.getElementById("confirm-modal").classList.replace("hidden", "flex");
+        }
+
+        function closeDemolishModal() {
+            document.getElementById("confirm-modal").classList.replace("flex", "hidden");
+        }
+
+        function executeDemolish() {
+            const firmName = mockFirms[activeFirmIndex].name;
+            mockFirms.splice(activeFirmIndex, 1);
+            
+            closeDemolishModal();
+            activeFirmIndex = 0;
+            
+            showToast(`${firmName} has been demolished.`);
+            renderFirmsSidebar();
+            loadFirmDetails(activeFirmIndex);
+        }
+
+        // Dynamic Simulation Tick Loop
+        function simulationTick() {
+            mockFirms.forEach((firm) => {
+                if (!firm.isOperational) return;
+
+                // Marginally fluctuate revenues and metrics to breathe life into UI sparklines
+                const changePct = 1 + (Math.random() * 0.08 - 0.04);
+                
+                if (firm.revenuePerHour > 0) {
+                    firm.revenuePerHour = Math.round(firm.revenuePerHour * changePct);
+                }
+
+                // Tick up crops growth
+                if (firm.type === "FARM" && firm.farmDetails.activeTab === "CROPS") {
+                    firm.farmDetails.growthProgress = (firm.farmDetails.growthProgress + 2) % 100;
+                }
+
+                // Tick up tech level
+                if (firm.type === "RESEARCH") {
+                    firm.researchDetails.techLevelProgress = (firm.researchDetails.techLevelProgress + 1) % 100;
+                }
+
+                // Slowly decay Real Estate integrity
+                if (firm.type === "REAL_ESTATE") {
+                    firm.realEstateDetails.maintenanceScore = Math.max(0, firm.realEstateDetails.maintenanceScore - 1);
+                    if (firm.realEstateDetails.maintenanceScore < 50) {
+                        firm.realEstateDetails.alertState = true;
+                    }
+                }
+
+                // Push new history to array and shift oldest
+                const newRev = firm.isOperational ? firm.revenuePerHour : 0;
+                const newUpkeep = firm.isOperational ? firm.upkeepCostPerHour : firm.upkeepCostPerHour * 0.2;
+                firm.financialHistory.push({ timestamp: "Now", revenue: newRev, profit: newRev - newUpkeep });
+                if (firm.financialHistory.length > 15) {
+                    firm.financialHistory.shift();
+                }
+            });
+
+            // Re-render display of active firm details
+            loadFirmDetails(activeFirmIndex);
+            renderFirmsSidebar();
+        }
+
+        // Custom notification toaster
+        function showToast(message) {
+            const toast = document.getElementById("toast-notification");
+            document.getElementById("toast-message").innerText = message;
+            
+            toast.className = toast.className.replace("opacity-0 pointer-events-none", "opacity-100 pointer-events-auto");
+            
+            setTimeout(() => {
+                toast.className = toast.className.replace("opacity-100 pointer-events-auto", "opacity-0 pointer-events-none");
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
