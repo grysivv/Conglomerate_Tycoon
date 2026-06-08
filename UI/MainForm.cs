@@ -87,8 +87,8 @@ namespace TycoonGame.UI
         {
             // Primary Application Window Parameters
             Text = "Business Tycoon Simulator (WinForms + MonoGame Hybrid)";
-            Size = new Size(1280, 800);
-            MinimumSize = new Size(1024, 768);
+            Size = new Size(1280, 720);
+            MinimumSize = new Size(1024, 720);
             BackColor = Color.FromArgb(11, 15, 25);
             ForeColor = Color.White;
             Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point);
@@ -1337,7 +1337,7 @@ namespace TycoonGame.UI
             }
 
             // Update Top Bar Date
-            string formattedDate = engine.CurrentDate.ToString("dd MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            string formattedDate = engine.CurrentDate.ToString("dd MMMM yyyy, HH:mm", System.Globalization.CultureInfo.InvariantCulture);
             SetLabelText(lblTopDate, formattedDate);
 
             // Cycle phase and macro indicators
