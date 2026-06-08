@@ -28,7 +28,7 @@ namespace TycoonGame.Rendering
         private GraphicsDevice? graphicsDevice;
         private SpriteBatch? spriteBatch;
         
-        public GameEngine Engine { get; set; }
+        public GameEngine? Engine { get; set; }
         public IsometricRenderer Renderer { get; private set; }
         public BuildTool ActiveTool { get; set; }
         public Tuple<int, int>? HoveredTile { get; private set; }
@@ -47,7 +47,7 @@ namespace TycoonGame.Rendering
             // Configure control styles for custom GPU rendering
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.Opaque, true);
             
-            Engine = new GameEngine();
+            Engine = null;
             Renderer = new IsometricRenderer();
             ActiveTool = BuildTool.Inspect;
             isDragging = false;
@@ -121,14 +121,14 @@ namespace TycoonGame.Rendering
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            if (graphicsDevice == null || spriteBatch == null)
+            if (graphicsDevice == null || spriteBatch == null || Engine == null)
             {
-                // Draw a fallback message if GPU context failed
-                using (Brush brush = new SolidBrush(System.Drawing.Color.DarkSlateGray))
+                // Draw a fallback message if GPU context failed or Engine is not set yet
+                using (Brush brush = new SolidBrush(System.Drawing.Color.FromArgb(24, 28, 36)))
                 {
                     e.Graphics.FillRectangle(brush, ClientRectangle);
                 }
-                e.Graphics.DrawString("GPU Render context initializing...", Font, Brushes.White, 10, 10);
+                e.Graphics.DrawString("Game Engine initializing...", Font, Brushes.White, 10, 10);
                 return;
             }
 
@@ -271,6 +271,7 @@ namespace TycoonGame.Rendering
 
         private void ExecuteToolAction(int tx, int ty)
         {
+            if (Engine == null) return;
             bool actionSuccess = false;
 
             switch (ActiveTool)

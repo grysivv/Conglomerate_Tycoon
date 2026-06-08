@@ -16,8 +16,8 @@ namespace TycoonGame.Core
         private static readonly string[] FirstNames = { "Alice", "Bob", "Charlie", "David", "Emma", "Frank", "Grace", "Henry", "Ivy", "Jack", "Kate", "Leo", "Mia", "Nathan", "Olivia", "Peter", "Quinn", "Rachel", "Sam", "Tina", "Victor", "Wendy", "Zack" };
         private static readonly string[] LastNames = { "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson" };
 
-        public string Id { get; }
-        public string Name { get; }
+        public string Id { get; set; }
+        public string Name { get; set; }
         public EmployeeRole Role { get; }
         public double HourlyWage { get; set; }
         public double Morale { get; set; } // 0.0 to 1.0

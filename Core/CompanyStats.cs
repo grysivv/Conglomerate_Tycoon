@@ -42,6 +42,7 @@ namespace TycoonGame.Core
         public double InterestRate { get; set; } // Annualized benchmark rate, set by game engine
         public double TaxRate { get; } // Corporate tax rate, e.g. 0.20 for 20%
         public double MaxLoanLimit => 1000000.0; // Clamped at $1,000,000 max borrowing limit
+        public string CompanyName { get; set; }
 
         // Cached Fields for high-performance UI retrieval (Step 7)
         public double CachedPropertyAssetValuation { get; set; }
@@ -123,6 +124,7 @@ namespace TycoonGame.Core
 
         public CompanyStats()
         {
+            CompanyName = "Player Corp";
             Cash = 500000.0; // $500,000 cash starting capital
             LoanBalance = 250000.0; // $250,000 starting loan debt
             InterestRate = 0.06; // 6% annual interest

@@ -1,6 +1,8 @@
 using System;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Windows.Forms;
 using Timer = System.Windows.Forms.Timer;
 using TycoonGame.Core;
@@ -10,16 +12,30 @@ namespace TycoonGame.UI
 {
     public class MainForm : Form
     {
-        private readonly GameEngine engine;
-        private MonoGamePanel gamePanel;
+        // Lazy loaded game state
+        private GameEngine? engine;
+        private MonoGamePanel? gamePanel;
         
-        // Timer for simulation ticks (runs at 60 FPS for fluid updates)
-        private Timer simulationTimer;
+        // Simulation clock and ticking parameters
+        private Timer? simulationTimer;
         private int currentSpeedMultiplier = 1; // 0 = Pause, 1 = 1x, 2 = 2x, 3 = 5x
         private DateTime lastUpdateTime;
         private double uiUpdateAccumulator = 0.0;
         private Tuple<int, int>? lastSelectedTileCoords = null;
         
+        // Main Menu controls and layouts
+        private Panel pnlMainMenu;
+        private Panel pnlLeftMenu;
+        private Panel pnlRightDetails;
+        private TextBox txtCompanyName;
+        private string selectedDifficulty = "Medium";
+        private Button btnDiffEasy;
+        private Button btnDiffMedium;
+        private Button btnDiffHard;
+
+        // Active game session UI panels
+        private Panel pnlGameContainer;
+
         // Sidebar controls
         private Label lblSelectedTileCoords;
         private Label lblSelectedTileType;
@@ -62,32 +78,686 @@ namespace TycoonGame.UI
 
         public MainForm()
         {
-            engine = new GameEngine();
-            InitializeComponent();
-            
-            lastUpdateTime = DateTime.Now;
-            
-            // Start simulation clock at 60 FPS for smooth time ticking
-            simulationTimer = new Timer { Interval = 16 };
-            simulationTimer.Tick += GameLoopTimer_Tick;
-            simulationTimer.Start();
-            
-            // Trigger initial UI update
-            UpdateBottomBar();
-            UpdateSidebar(null);
+            InitializeMainMenu();
         }
 
-        private void InitializeComponent()
+        #region Main Menu Layout & Logics
+
+        private void InitializeMainMenu()
         {
+            // Primary Application Window Parameters
             Text = "Business Tycoon Simulator (WinForms + MonoGame Hybrid)";
             Size = new Size(1280, 800);
             MinimumSize = new Size(1024, 768);
-            BackColor = Color.FromArgb(24, 28, 36);
+            BackColor = Color.FromArgb(11, 15, 25);
             ForeColor = Color.White;
             Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point);
             StartPosition = FormStartPosition.CenterScreen;
 
-            // Main Layout Panels
+            // Safely wipe any existing active controls
+            this.Controls.Clear();
+
+            // Root Main Menu Viewport Panel
+            pnlMainMenu = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(11, 15, 25)
+            };
+            this.Controls.Add(pnlMainMenu);
+
+            // Left vertical stack menu bar
+            pnlLeftMenu = new Panel
+            {
+                Width = 320,
+                Dock = DockStyle.Left,
+                BackColor = Color.FromArgb(15, 20, 35),
+                Padding = new Padding(20)
+            };
+            pnlMainMenu.Controls.Add(pnlLeftMenu);
+
+            // Accent separating line
+            Panel pnlSeparator = new Panel
+            {
+                Width = 2,
+                Dock = DockStyle.Left,
+                BackColor = Color.FromArgb(40, 48, 68)
+            };
+            pnlMainMenu.Controls.Add(pnlSeparator);
+
+            // Dynamic view area for setup / grids
+            pnlRightDetails = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(11, 15, 25),
+                Padding = new Padding(40)
+            };
+            pnlMainMenu.Controls.Add(pnlRightDetails);
+
+            // Title accent blocks
+            Label lblTitle = new Label
+            {
+                Text = "KRONOS NETWORKS",
+                Font = new Font("Segoe UI", 18F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(0, 240, 255),
+                AutoSize = true,
+                Location = new Point(20, 30)
+            };
+            pnlLeftMenu.Controls.Add(lblTitle);
+
+            Label lblSubTitle = new Label
+            {
+                Text = "TYCOON SIMULATION CONSOLE",
+                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(113, 128, 150),
+                AutoSize = true,
+                Location = new Point(22, 65)
+            };
+            pnlLeftMenu.Controls.Add(lblSubTitle);
+
+            // Stack panel for button columns
+            FlowLayoutPanel pnlButtonsFlow = new FlowLayoutPanel
+            {
+                Location = new Point(20, 120),
+                Size = new Size(280, 500),
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false
+            };
+            pnlLeftMenu.Controls.Add(pnlButtonsFlow);
+
+            // 1. Continue option (safely checks autosave.sav presence)
+            Button btnContinue = CreateMenuButton("CONTINUE (Kontynuuj)", BtnContinue_Click);
+            bool autosaveExists = File.Exists("autosave.sav");
+            if (autosaveExists)
+            {
+                btnContinue.Enabled = true;
+                btnContinue.ForeColor = Color.FromArgb(0, 255, 102);
+                btnContinue.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 102);
+                btnContinue.MouseEnter += (s, e) => btnContinue.ForeColor = Color.Black;
+                btnContinue.MouseLeave += (s, e) => btnContinue.ForeColor = Color.FromArgb(0, 255, 102);
+            }
+            else
+            {
+                btnContinue.Enabled = false;
+                btnContinue.BackColor = Color.FromArgb(20, 24, 33);
+                btnContinue.ForeColor = Color.FromArgb(70, 80, 95);
+                btnContinue.FlatAppearance.BorderColor = Color.FromArgb(40, 48, 60);
+            }
+            pnlButtonsFlow.Controls.Add(btnContinue);
+
+            // 2. New Game option (Nowa Gra)
+            Button btnNewGame = CreateMenuButton("NEW GAME (Nowa Gra)", BtnNewGame_Click);
+            pnlButtonsFlow.Controls.Add(btnNewGame);
+
+            // 3. Load Game slot subgrid (Wczytaj)
+            Button btnLoadGame = CreateMenuButton("LOAD GAME (Wczytaj)", BtnLoadGame_Click);
+            pnlButtonsFlow.Controls.Add(btnLoadGame);
+
+            // 4. Settings placeholder
+            Button btnSettings = CreateMenuButton("SETTINGS (Ustawienia)", BtnSettings_Click);
+            pnlButtonsFlow.Controls.Add(btnSettings);
+
+            // 5. Hard Exit command
+            Button btnExit = CreateMenuButton("EXIT SYSTEM (Wyjście)", (s, e) => Application.Exit());
+            btnExit.ForeColor = Color.FromArgb(255, 80, 80);
+            btnExit.FlatAppearance.BorderColor = Color.FromArgb(255, 80, 80);
+            btnExit.MouseEnter += (s, e) => btnExit.ForeColor = Color.Black;
+            btnExit.MouseLeave += (s, e) => btnExit.ForeColor = Color.FromArgb(255, 80, 80);
+            pnlButtonsFlow.Controls.Add(btnExit);
+
+            ShowDefaultWelcomeScreen();
+
+            EnableDoubleBuffered(this);
+            EnableDoubleBuffered(pnlLeftMenu);
+            EnableDoubleBuffered(pnlRightDetails);
+        }
+
+        private void ShowDefaultWelcomeScreen()
+        {
+            pnlRightDetails.Controls.Clear();
+
+            TextBox txtTerminal = new TextBox
+            {
+                Multiline = true,
+                ReadOnly = true,
+                BackColor = Color.FromArgb(11, 15, 25),
+                ForeColor = Color.FromArgb(0, 240, 255),
+                Font = new Font("Consolas", 10F, FontStyle.Regular),
+                BorderStyle = BorderStyle.None,
+                Dock = DockStyle.Fill,
+                Text = "========================================================================\r\n" +
+                       "              KRONOS OPERATING SYSTEM - VERTEX ENGINE v2.5\r\n" +
+                       "              ESTABLISHING QUANTUM ENCRYPTED SIMULATION CLIENT...\r\n" +
+                       "========================================================================\r\n\r\n" +
+                       " [SYSTEM LOG] SECURE NODE CONNECTION: ESTABLISHED\r\n" +
+                       " [SYSTEM LOG] CORE MEMORY STACK: READY\r\n" +
+                       " [SYSTEM LOG] GRAPHICS PIPELINE: MONOGAME LAZY PIPELINE STANDBY\r\n" +
+                       " [SYSTEM LOG] GRID SYSTEMS: 120 x 120 SECTORS (14,400 TILE CHANNELS)\r\n" +
+                       " [SYSTEM LOG] COMPETITOR SIMULATORS: STANDBY\r\n\r\n" +
+                       " SELECT CORRESPONDING COMMAND OPERATION FROM THE LEFT CONSOLE PANEL..."
+            };
+            pnlRightDetails.Controls.Add(txtTerminal);
+        }
+
+        private void BtnNewGame_Click(object? sender, EventArgs e)
+        {
+            pnlRightDetails.Controls.Clear();
+            pnlLeftMenu.Visible = false; // Hide primary button column
+
+            TableLayoutPanel pnlSetup = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 8,
+                Padding = new Padding(20),
+                BackColor = Color.FromArgb(15, 20, 35)
+            };
+            pnlSetup.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F)); // Title
+            pnlSetup.RowStyles.Add(new RowStyle(SizeType.Absolute, 35F)); // Name Label
+            pnlSetup.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F)); // Name TextBox
+            pnlSetup.RowStyles.Add(new RowStyle(SizeType.Absolute, 35F)); // Difficulty Label
+            pnlSetup.RowStyles.Add(new RowStyle(SizeType.Absolute, 65F)); // Difficulty buttons row
+            pnlSetup.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Spacer
+            pnlSetup.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F)); // Launch empire
+            pnlSetup.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F)); // Abort
+            pnlRightDetails.Controls.Add(pnlSetup);
+
+            Label lblSetupTitle = new Label
+            {
+                Text = "INITIALIZE NEW CORPORATE EMPIRE CORE",
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(0, 240, 255),
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            pnlSetup.Controls.Add(lblSetupTitle, 0, 0);
+
+            Label lblName = new Label
+            {
+                Text = "CORPORATE NAME (Nazwa firmy):",
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                ForeColor = Color.White,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.BottomLeft
+            };
+            pnlSetup.Controls.Add(lblName, 0, 1);
+
+            txtCompanyName = new TextBox
+            {
+                Text = "KRONOS INDUSTRIES",
+                Font = new Font("Segoe UI", 12F, FontStyle.Regular),
+                BackColor = Color.FromArgb(26, 32, 44),
+                ForeColor = Color.White,
+                BorderStyle = BorderStyle.FixedSingle,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 5, 0, 10)
+            };
+            pnlSetup.Controls.Add(txtCompanyName, 0, 2);
+
+            Label lblDiff = new Label
+            {
+                Text = "SELECT INITIAL FINANCE STRATEGY:",
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                ForeColor = Color.White,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.BottomLeft
+            };
+            pnlSetup.Controls.Add(lblDiff, 0, 3);
+
+            TableLayoutPanel pnlDiffButtons = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3,
+                RowCount = 1,
+                Margin = new Padding(0)
+            };
+            pnlDiffButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+            pnlDiffButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+            pnlDiffButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+            pnlSetup.Controls.Add(pnlDiffButtons, 0, 4);
+
+            btnDiffEasy = new Button
+            {
+                Text = "CONSERVATIVE SEEDING\r\n$800K Cash / $100K Debt",
+                Dock = DockStyle.Fill,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(26, 32, 44),
+                Margin = new Padding(2)
+            };
+            btnDiffEasy.FlatAppearance.BorderSize = 1;
+            btnDiffEasy.FlatAppearance.BorderColor = Color.FromArgb(45, 55, 72);
+            btnDiffEasy.Click += (s, e) => SelectDifficulty("Easy");
+
+            btnDiffMedium = new Button
+            {
+                Text = "BALANCED ENTRY\r\n$500K Cash / $250K Debt",
+                Dock = DockStyle.Fill,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(26, 32, 44),
+                Margin = new Padding(2)
+            };
+            btnDiffMedium.FlatAppearance.BorderSize = 1;
+            btnDiffMedium.FlatAppearance.BorderColor = Color.FromArgb(45, 55, 72);
+            btnDiffMedium.Click += (s, e) => SelectDifficulty("Medium");
+
+            btnDiffHard = new Button
+            {
+                Text = "AGGRESSIVE LEVERAGE\r\n$250K Cash / $400K Debt",
+                Dock = DockStyle.Fill,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(26, 32, 44),
+                Margin = new Padding(2)
+            };
+            btnDiffHard.FlatAppearance.BorderSize = 1;
+            btnDiffHard.FlatAppearance.BorderColor = Color.FromArgb(45, 55, 72);
+            btnDiffHard.Click += (s, e) => SelectDifficulty("Hard");
+
+            pnlDiffButtons.Controls.Add(btnDiffEasy, 0, 0);
+            pnlDiffButtons.Controls.Add(btnDiffMedium, 1, 0);
+            pnlDiffButtons.Controls.Add(btnDiffHard, 2, 0);
+
+            SelectDifficulty("Medium"); // default strategy
+
+            Button btnLaunch = new Button
+            {
+                Text = "[LAUNCH EMPIRE]",
+                Dock = DockStyle.Fill,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(0, 255, 102),
+                ForeColor = Color.Black,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 5, 0, 5)
+            };
+            btnLaunch.FlatAppearance.BorderSize = 0;
+            btnLaunch.Click += BtnLaunch_Click;
+            pnlSetup.Controls.Add(btnLaunch, 0, 6);
+
+            Button btnCancel = new Button
+            {
+                Text = "[ABORT & RETURN]",
+                Dock = DockStyle.Fill,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(45, 55, 72),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 5, 0, 5)
+            };
+            btnCancel.FlatAppearance.BorderSize = 0;
+            btnCancel.Click += (s, e) => {
+                pnlLeftMenu.Visible = true;
+                ShowDefaultWelcomeScreen();
+            };
+            pnlSetup.Controls.Add(btnCancel, 0, 7);
+        }
+
+        private void SelectDifficulty(string diff)
+        {
+            selectedDifficulty = diff;
+            Color activeBorderColor = Color.FromArgb(0, 240, 255);
+            Color idleBorderColor = Color.FromArgb(45, 55, 72);
+            Color activeBgColor = Color.FromArgb(30, 45, 65);
+            Color idleBgColor = Color.FromArgb(26, 32, 44);
+
+            btnDiffEasy.FlatAppearance.BorderColor = diff == "Easy" ? activeBorderColor : idleBorderColor;
+            btnDiffEasy.BackColor = diff == "Easy" ? activeBgColor : idleBgColor;
+            btnDiffEasy.ForeColor = diff == "Easy" ? Color.FromArgb(0, 240, 255) : Color.White;
+
+            btnDiffMedium.FlatAppearance.BorderColor = diff == "Medium" ? activeBorderColor : idleBorderColor;
+            btnDiffMedium.BackColor = diff == "Medium" ? activeBgColor : idleBgColor;
+            btnDiffMedium.ForeColor = diff == "Medium" ? Color.FromArgb(0, 240, 255) : Color.White;
+
+            btnDiffHard.FlatAppearance.BorderColor = diff == "Hard" ? activeBorderColor : idleBorderColor;
+            btnDiffHard.BackColor = diff == "Hard" ? activeBgColor : idleBgColor;
+            btnDiffHard.ForeColor = diff == "Hard" ? Color.FromArgb(0, 240, 255) : Color.White;
+        }
+
+        private void BtnLaunch_Click(object? sender, EventArgs e)
+        {
+            string name = txtCompanyName.Text.Trim();
+            if (string.IsNullOrEmpty(name))
+            {
+                MessageBox.Show("Please enter a valid Corporate Name!", "Simulation Setup Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Lazy initialization of game engine (grid memory allocated now)
+            engine = new GameEngine();
+            engine.Stats.CompanyName = name;
+
+            // Set cash/debt allocation configurations
+            if (selectedDifficulty == "Easy")
+            {
+                engine.Stats.Cash = 800000.0;
+                engine.Stats.LoanBalance = 100000.0;
+            }
+            else if (selectedDifficulty == "Medium")
+            {
+                engine.Stats.Cash = 500000.0;
+                engine.Stats.LoanBalance = 250000.0;
+            }
+            else if (selectedDifficulty == "Hard")
+            {
+                engine.Stats.Cash = 250000.0;
+                engine.Stats.LoanBalance = 400000.0;
+            }
+
+            double initialAssetVal = 0;
+            for (int x = 0; x < GameEngine.MapSize; x++)
+            {
+                for (int y = 0; y < GameEngine.MapSize; y++)
+                {
+                    initialAssetVal += engine.Grid[x, y].GetAssetValue();
+                }
+            }
+            engine.Stats.UpdateCachedValues(initialAssetVal, 0.0);
+            engine.Stats.UpdatePlayerStockPrice(initialAssetVal);
+            engine.Stats.UpdateAiStockPrice();
+
+            // Populate the fully functional tycoon viewport and controls
+            InitializeGameUI();
+            
+            pnlMainMenu.Visible = false;
+            pnlGameContainer.Visible = true;
+
+            // Start simulation cycle
+            lastUpdateTime = DateTime.Now;
+            simulationTimer.Start();
+        }
+
+        private void BtnLoadGame_Click(object? sender, EventArgs e)
+        {
+            pnlRightDetails.Controls.Clear();
+            pnlLeftMenu.Visible = false;
+
+            TableLayoutPanel pnlLoad = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 13,
+                Padding = new Padding(20),
+                BackColor = Color.FromArgb(15, 20, 35)
+            };
+            pnlLoad.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F)); // Title
+            pnlLoad.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F)); // Spacer
+            for (int i = 0; i < 10; i++)
+            {
+                pnlLoad.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F));
+            }
+            pnlLoad.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            pnlLoad.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F)); // Return
+            pnlRightDetails.Controls.Add(pnlLoad);
+
+            Label lblTitle = new Label
+            {
+                Text = "RESTORE CORPORATE SIMULATION STATE",
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(0, 240, 255),
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            pnlLoad.Controls.Add(lblTitle, 0, 0);
+
+            // Populate itemized subgrid (10 slots)
+            for (int i = 1; i <= 10; i++)
+            {
+                int slotIndex = i;
+                string metadata = GetSlotMetadataText(slotIndex);
+                bool hasSave = !string.IsNullOrEmpty(metadata);
+
+                Button btnSlot = new Button
+                {
+                    Dock = DockStyle.Fill,
+                    FlatStyle = FlatStyle.Flat,
+                    Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                    Cursor = hasSave ? Cursors.Hand : Cursors.Default,
+                    Margin = new Padding(0, 3, 0, 3)
+                };
+
+                if (hasSave)
+                {
+                    btnSlot.Text = $"[ SLOT {slotIndex} ] - {metadata}";
+                    btnSlot.BackColor = Color.FromArgb(26, 40, 55);
+                    btnSlot.ForeColor = Color.FromArgb(0, 255, 102);
+                    btnSlot.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 102);
+                    btnSlot.FlatAppearance.MouseOverBackColor = Color.FromArgb(0, 255, 102);
+                    btnSlot.MouseEnter += (s, e) => btnSlot.ForeColor = Color.Black;
+                    btnSlot.MouseLeave += (s, e) => btnSlot.ForeColor = Color.FromArgb(0, 255, 102);
+                    btnSlot.Click += (s, e) => LoadSlotGame(slotIndex);
+                }
+                else
+                {
+                    btnSlot.Text = $"[ EMPTY SLOT {slotIndex} ]";
+                    btnSlot.BackColor = Color.FromArgb(20, 24, 33);
+                    btnSlot.ForeColor = Color.FromArgb(70, 80, 95);
+                    btnSlot.FlatAppearance.BorderColor = Color.FromArgb(40, 48, 60);
+                    btnSlot.Enabled = false;
+                }
+
+                pnlLoad.Controls.Add(btnSlot, 0, i + 1);
+            }
+
+            Button btnBack = new Button
+            {
+                Text = "[ RETURN TO CORE MENU ]",
+                Dock = DockStyle.Fill,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(45, 55, 72),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 5, 0, 5)
+            };
+            btnBack.FlatAppearance.BorderSize = 0;
+            btnBack.Click += (s, e) => {
+                pnlLeftMenu.Visible = true;
+                ShowDefaultWelcomeScreen();
+            };
+            pnlLoad.Controls.Add(btnBack, 0, 12);
+        }
+
+        private void LoadSlotGame(int slotIndex)
+        {
+            string fileName = $"save_slot_{slotIndex}.json";
+            if (!File.Exists(fileName)) return;
+
+            try
+            {
+                engine = new GameEngine();
+                engine.LoadFromFile(fileName);
+
+                InitializeGameUI();
+
+                pnlMainMenu.Visible = false;
+                pnlGameContainer.Visible = true;
+
+                lastUpdateTime = DateTime.Now;
+                simulationTimer.Start();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to restore simulation state: {ex.Message}", "State Loading Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void BtnContinue_Click(object? sender, EventArgs e)
+        {
+            if (!File.Exists("autosave.sav")) return;
+
+            try
+            {
+                engine = new GameEngine();
+                engine.LoadFromFile("autosave.sav");
+
+                InitializeGameUI();
+
+                pnlMainMenu.Visible = false;
+                pnlGameContainer.Visible = true;
+
+                lastUpdateTime = DateTime.Now;
+                simulationTimer.Start();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to continue autosave state: {ex.Message}", "Quicksave Loading Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void BtnSettings_Click(object? sender, EventArgs e)
+        {
+            pnlRightDetails.Controls.Clear();
+            pnlLeftMenu.Visible = false;
+
+            TableLayoutPanel pnlSettings = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 4,
+                Padding = new Padding(20),
+                BackColor = Color.FromArgb(15, 20, 35)
+            };
+            pnlSettings.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F)); // Title
+            pnlSettings.RowStyles.Add(new RowStyle(SizeType.Absolute, 200F)); // Terminal placeholder
+            pnlSettings.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Spacer
+            pnlSettings.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F)); // Back
+            pnlRightDetails.Controls.Add(pnlSettings);
+
+            Label lblTitle = new Label
+            {
+                Text = "SYSTEM CONFIGURATION DESK",
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(0, 240, 255),
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            pnlSettings.Controls.Add(lblTitle, 0, 0);
+
+            TextBox txtTerminal = new TextBox
+            {
+                Multiline = true,
+                ReadOnly = true,
+                BackColor = Color.FromArgb(20, 25, 40),
+                ForeColor = Color.FromArgb(255, 153, 0), // Amber terminal text
+                Font = new Font("Consolas", 10F, FontStyle.Regular),
+                BorderStyle = BorderStyle.FixedSingle,
+                Dock = DockStyle.Fill,
+                Text = "+-------------------------------------------------------------+\r\n" +
+                       "|          SYSTEM CONFIGURATION - UNDER CONSTRUCTION          |\r\n" +
+                       "+-------------------------------------------------------------+\r\n" +
+                       "| [INFO]  AUDIO INTERRUPTS: ENABLED                           |\r\n" +
+                       "| [INFO]  NEURAL SYNAPSE RATE: 60Hz                           |\r\n" +
+                       "| [WARN]  EXTERNAL NETWORK ACCESS: LOCKED BY FIREWALL         |\r\n" +
+                       "| [INFO]  RENDER MULTITHREADING: ACTIVE                       |\r\n" +
+                       "| [ERR]   CONFIG PROTOCOL: ENHANCED RESOLUTION NEEDED         |\r\n" +
+                       "+-------------------------------------------------------------+"
+            };
+            pnlSettings.Controls.Add(txtTerminal, 0, 1);
+
+            Button btnBack = new Button
+            {
+                Text = "[ RETURN TO CORE MENU ]",
+                Dock = DockStyle.Fill,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(45, 55, 72),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 5, 0, 5)
+            };
+            btnBack.FlatAppearance.BorderSize = 0;
+            btnBack.Click += (s, e) => {
+                pnlLeftMenu.Visible = true;
+                ShowDefaultWelcomeScreen();
+            };
+            pnlSettings.Controls.Add(btnBack, 0, 3);
+        }
+
+        private string GetSlotMetadataText(int slotIndex)
+        {
+            string fileName = $"save_slot_{slotIndex}.json";
+            if (File.Exists(fileName))
+            {
+                try
+                {
+                    string json = File.ReadAllText(fileName);
+                    var data = JsonSerializer.Deserialize<SaveData>(json);
+                    if (data != null)
+                    {
+                        string formattedDate = "Unknown Date";
+                        if (DateTime.TryParse(data.CurrentDate, out DateTime parsedDate))
+                        {
+                            formattedDate = parsedDate.ToString("dd MMM yyyy HH:mm");
+                        }
+                        else if (!string.IsNullOrEmpty(data.CurrentDate))
+                        {
+                            formattedDate = data.CurrentDate;
+                        }
+                        return $"{data.CompanyName} ({formattedDate})";
+                    }
+                }
+                catch
+                {
+                    return "[ CORRUPT SAVE ]";
+                }
+            }
+            return "";
+        }
+
+        private Button CreateMenuButton(string text, EventHandler onClick)
+        {
+            Button btn = new Button
+            {
+                Text = text,
+                Size = new Size(280, 45),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(26, 32, 44),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 5, 0, 5)
+            };
+            btn.FlatAppearance.BorderSize = 1;
+            btn.FlatAppearance.BorderColor = Color.FromArgb(45, 55, 72);
+            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(0, 240, 255);
+            btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(0, 180, 200);
+
+            btn.MouseEnter += (s, e) => {
+                if (btn.Enabled) btn.ForeColor = Color.Black;
+            };
+            btn.MouseLeave += (s, e) => {
+                if (btn.Enabled) btn.ForeColor = (text.StartsWith("CONTINUE") ? Color.FromArgb(0, 255, 102) : Color.White);
+            };
+            btn.Click += onClick;
+            return btn;
+        }
+
+        #endregion
+
+        #region Game Simulation UI Layout & Logic
+
+        private void InitializeGameUI()
+        {
+            // Wipe main menu controls
+            this.Controls.Remove(pnlMainMenu);
+
+            // Create simulation main container
+            pnlGameContainer = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(24, 28, 36)
+            };
+            this.Controls.Add(pnlGameContainer);
+
+            // Primary Layout Panels
             TableLayoutPanel mainLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -98,9 +768,9 @@ namespace TycoonGame.UI
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 78F)); // MonoGame Panel
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22F)); // Sidebar Control Panel
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F)); // Top Bar
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Middle (Game + Sidebar)
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Middle (Viewport + Sidebar)
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 55F)); // Bottom Bar
-            Controls.Add(mainLayout);
+            pnlGameContainer.Controls.Add(mainLayout);
 
             // 0. Top Bar Panel Setup
             TableLayoutPanel pnlTop = new TableLayoutPanel
@@ -212,7 +882,7 @@ namespace TycoonGame.UI
 
             pnlTop.Controls.Add(pnlTopRight, 1, 0);
 
-            // 1. MonoGame Panel Setup
+            // 1. MonoGame Viewport Panel (Hot-swap binded)
             gamePanel = new MonoGamePanel
             {
                 Engine = engine,
@@ -471,15 +1141,23 @@ namespace TycoonGame.UI
                 UpdateSidebar(gamePanel.SelectedTile, forceRepopulate: true);
                 UpdateBottomBar();
             });
+            Button btnSystem = CreateExecutiveButton("System", (s, e) => {
+                ShowSystemMenu();
+            });
 
             pnlButtons.Controls.Add(btnHR);
             pnlButtons.Controls.Add(btnRD);
             pnlButtons.Controls.Add(btnLogistics);
             pnlButtons.Controls.Add(btnFinance);
+            pnlButtons.Controls.Add(btnSystem);
             pnlBottom.Controls.Add(pnlButtons, 2, 0);
 
+            // Setup Simulation Timer (Ticking loop)
+            simulationTimer = new Timer { Interval = 16 };
+            simulationTimer.Tick += GameLoopTimer_Tick;
+
             // Enable Double Buffering to reduce repaint flickering
-            EnableDoubleBuffered(this);
+            EnableDoubleBuffered(pnlGameContainer);
             EnableDoubleBuffered(mainLayout);
             EnableDoubleBuffered(pnlSidebar);
             EnableDoubleBuffered(pnlBottom);
@@ -544,6 +1222,7 @@ namespace TycoonGame.UI
 
         private void SetActiveTool(BuildTool tool)
         {
+            if (gamePanel == null) return;
             gamePanel.ActiveTool = tool;
 
             for (int i = 0; i < toolTypes.Length; i++)
@@ -554,6 +1233,8 @@ namespace TycoonGame.UI
 
         private void GameLoopTimer_Tick(object? sender, EventArgs e)
         {
+            if (engine == null || gamePanel == null) return;
+
             DateTime now = DateTime.Now;
             double dt = (now - lastUpdateTime).TotalSeconds;
             lastUpdateTime = now;
@@ -632,6 +1313,8 @@ namespace TycoonGame.UI
 
         private void UpdateBottomBar()
         {
+            if (engine == null) return;
+
             // Update Top Bar
             SetLabelText(lblTopCash, $"Cash Reserves: ${engine.Stats.Cash:N2}");
             SetLabelForeColor(lblTopCash, engine.Stats.Cash < 0 ? Color.FromArgb(240, 100, 100) : Color.FromArgb(100, 240, 140));
@@ -653,11 +1336,11 @@ namespace TycoonGame.UI
                 SetControlVisible(btnTopLaunchIpo, true);
             }
 
-            // Update Top Bar Date - formatted as DD Month YYYY (e.g. 07 June 2026)
+            // Update Top Bar Date
             string formattedDate = engine.CurrentDate.ToString("dd MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture);
             SetLabelText(lblTopDate, formattedDate);
 
-            // Dynamically show the cycle phase and key macro indicators
+            // Cycle phase and macro indicators
             string phaseStr = engine.CyclePhase.ToString();
             SetLabelText(lblBottomShare, $"Macro: GDP {engine.GDP_Index:F1} ({phaseStr})\nInt: {engine.Interest_Rate * 100:F1}% / CCI: {engine.ConsumerConfidenceIndex:F2}");
             
@@ -698,6 +1381,8 @@ namespace TycoonGame.UI
 
         private void UpdateSidebar(Tuple<int, int>? tileCoords, bool forceRepopulate = false)
         {
+            if (engine == null) return;
+
             bool selectionChanged = false;
             if (tileCoords == null && lastSelectedTileCoords != null)
             {
@@ -806,7 +1491,6 @@ namespace TycoonGame.UI
 
             if (repopulate)
             {
-                // Populate assigned employees list
                 lstAssignedEmployees.Items.Clear();
                 var assigned = engine.Employees.Where(e => e.AssignedX == tx && e.AssignedY == ty).ToList();
                 foreach (var emp in assigned)
@@ -814,18 +1498,16 @@ namespace TycoonGame.UI
                     lstAssignedEmployees.Items.Add($"{emp.Name} ({emp.Role})");
                 }
 
-                // Populate unassigned employee combobox based on building worker requirements
                 cmbUnassignedEmployees.Items.Clear();
                 var unassigned = engine.Employees.Where(e => e.AssignedX == -1).ToList();
 
-                // Filter available workers by appropriate role
                 if (tile.Type == TileType.PowerPlant)
                 {
                     unassigned = unassigned.Where(e => e.Role == EmployeeRole.Worker || e.Role == EmployeeRole.Manager).ToList();
                 }
                 else if (tile.Type == TileType.Office)
                 {
-                    // Offices accept any employee type
+                    // Offices accept all roles
                 }
                 else if (tile.Type == TileType.Factory)
                 {
@@ -850,7 +1532,7 @@ namespace TycoonGame.UI
 
         private void BtnAssignEmployee_Click(object? sender, EventArgs e)
         {
-            if (gamePanel.SelectedTile == null || cmbUnassignedEmployees.SelectedItem == null) return;
+            if (engine == null || gamePanel == null || gamePanel.SelectedTile == null || cmbUnassignedEmployees.SelectedItem == null) return;
             var item = (ComboBoxEmployeeItem)cmbUnassignedEmployees.SelectedItem;
             
             if (engine.AssignEmployee(item.Emp.Id, gamePanel.SelectedTile.Item1, gamePanel.SelectedTile.Item2))
@@ -862,7 +1544,7 @@ namespace TycoonGame.UI
 
         private void BtnUnassignEmployee_Click(object? sender, EventArgs e)
         {
-            if (gamePanel.SelectedTile == null || lstAssignedEmployees.SelectedIndex == -1) return;
+            if (engine == null || gamePanel == null || gamePanel.SelectedTile == null || lstAssignedEmployees.SelectedIndex == -1) return;
             int idx = lstAssignedEmployees.SelectedIndex;
             var assigned = engine.Employees.Where(e => e.AssignedX == gamePanel.SelectedTile.Item1 && e.AssignedY == gamePanel.SelectedTile.Item2).ToList();
             
@@ -876,7 +1558,7 @@ namespace TycoonGame.UI
 
         private void BtnUpgradeBuilding_Click(object? sender, EventArgs e)
         {
-            if (gamePanel.SelectedTile == null) return;
+            if (engine == null || gamePanel == null || gamePanel.SelectedTile == null) return;
             int tx = gamePanel.SelectedTile.Item1;
             int ty = gamePanel.SelectedTile.Item2;
 
@@ -894,9 +1576,8 @@ namespace TycoonGame.UI
 
         private void BtnTopLaunchIpo_Click(object? sender, EventArgs e)
         {
-            if (engine.Stats.IsIpoLaunched) return;
+            if (engine == null || gamePanel == null || engine.Stats.IsIpoLaunched) return;
 
-            // Theoretical stock price at IPO
             double initialAssetVal = 0;
             for (int x = 0; x < GameEngine.MapSize; x++)
             {
@@ -908,11 +1589,10 @@ namespace TycoonGame.UI
             engine.Stats.UpdatePlayerStockPrice(initialAssetVal);
             double ipoPrice = engine.Stats.PlayerStockPrice;
 
-            // Sell 40% (400,000 shares) of the company's 1,000,000 shares to GPW
             double sharesSold = 400000.0;
             double capitalRaised = sharesSold * ipoPrice;
 
-            engine.Stats.PlayerSharesOwnedByPlayer = 600000.0; // Keeps 60%
+            engine.Stats.PlayerSharesOwnedByPlayer = 600000.0; // Keep 60%
             engine.Stats.Cash += capitalRaised;
             engine.Stats.IsIpoLaunched = true;
 
@@ -925,8 +1605,57 @@ namespace TycoonGame.UI
                 MessageBoxIcon.Information);
 
             btnTopLaunchIpo.Visible = false;
-            UpdateBottomBar(); // Refresh top/bottom values immediately
+            UpdateBottomBar();
             gamePanel.Invalidate();
+        }
+
+        private void ShowSystemMenu()
+        {
+            if (engine == null) return;
+
+            // Hold simulation clock during system interactions
+            int oldSpeed = currentSpeedMultiplier;
+            SetSimulationSpeed(0);
+
+            using (var sysMenu = new SystemMenuWindow(engine))
+            {
+                sysMenu.ShowDialog(this);
+                if (sysMenu.ShouldExitToMainMenu)
+                {
+                    ExitToMainMenu();
+                    return;
+                }
+            }
+
+            // Resume simulation speed
+            SetSimulationSpeed(oldSpeed);
+            if (gamePanel != null)
+            {
+                UpdateSidebar(gamePanel.SelectedTile, forceRepopulate: true);
+                UpdateBottomBar();
+            }
+        }
+
+        private void ExitToMainMenu()
+        {
+            // Stop simulation ticking
+            simulationTimer?.Stop();
+
+            // Clear controls
+            this.Controls.Clear();
+
+            // Destroy game viewport (free GPU context) and unload grid memory
+            if (gamePanel != null)
+            {
+                gamePanel.TileSelected -= GamePanel_TileSelected;
+                gamePanel.Dispose();
+                gamePanel = null;
+            }
+
+            engine = null;
+
+            // Reload Main Menu
+            InitializeMainMenu();
         }
 
         private class ComboBoxEmployeeItem
@@ -935,5 +1664,7 @@ namespace TycoonGame.UI
             public ComboBoxEmployeeItem(Employee emp) => Emp = emp;
             public override string ToString() => $"{Emp.Name} ({Emp.Role})";
         }
+
+        #endregion
     }
 }

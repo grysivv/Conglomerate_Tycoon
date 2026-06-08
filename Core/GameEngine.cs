@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
+using System.Text.Json;
 
 namespace TycoonGame.Core
 {
@@ -24,6 +26,58 @@ namespace TycoonGame.Core
             MarketShare = share;
             AveragePrice = price;
         }
+    }
+
+    // JSON Serialization DTOs
+    public class SaveData
+    {
+        public string CompanyName { get; set; } = "Player Corp";
+        public double Cash { get; set; }
+        public double LoanBalance { get; set; }
+        public bool IsIpoLaunched { get; set; }
+        public double PreviousMonthCashflow { get; set; }
+        
+        public string CurrentDate { get; set; } = "";
+        public double GDP_Index { get; set; }
+        public double Inflation_Rate { get; set; }
+        public double Unemployment_Rate { get; set; }
+        public double Interest_Rate { get; set; }
+        public double ConsumerConfidenceIndex { get; set; }
+        public int CyclePhase { get; set; }
+
+        public List<string> CompletedResearch { get; set; } = new List<string>();
+        public string ActiveResearchName { get; set; } = "";
+        public double ActiveResearchPoints { get; set; }
+
+        public List<TileSaveData> Tiles { get; set; } = new List<TileSaveData>();
+        public List<EmployeeSaveData> Employees { get; set; } = new List<EmployeeSaveData>();
+    }
+
+    public class TileSaveData
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        public int Type { get; set; }
+        public int Level { get; set; }
+        public double Inventory { get; set; }
+        public double MaxInventory { get; set; }
+        public double MaintenanceCost { get; set; }
+        public decimal LandValue { get; set; }
+        public double TrafficIndex { get; set; }
+        public double RetailPrice { get; set; }
+        public double DepreciatedValue { get; set; }
+    }
+
+    public class EmployeeSaveData
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public int Role { get; set; }
+        public double HourlyWage { get; set; }
+        public double Morale { get; set; }
+        public double SkillLevel { get; set; }
+        public int AssignedX { get; set; }
+        public int AssignedY { get; set; }
     }
 
     public class GameEngine
@@ -1208,6 +1262,176 @@ namespace TycoonGame.Core
                 comp.AveragePrice = comp.AveragePrice * 0.95 + targetCompPrice * 0.05;
                 comp.AveragePrice = Math.Clamp(comp.AveragePrice, 20.00, 70.00);
             }
+        }
+
+        // Save & Load Game state implementation
+        public void SaveToFile(string filePath)
+        {
+            var data = new SaveData
+            {
+                CompanyName = Stats.CompanyName,
+                Cash = Stats.Cash,
+                LoanBalance = Stats.LoanBalance,
+                IsIpoLaunched = Stats.IsIpoLaunched,
+                PreviousMonthCashflow = Stats.PreviousMonthCashflow,
+                CurrentDate = CurrentDate.ToString("o"),
+                GDP_Index = GDP_Index,
+                Inflation_Rate = Inflation_Rate,
+                Unemployment_Rate = Unemployment_Rate,
+                Interest_Rate = Interest_Rate,
+                ConsumerConfidenceIndex = ConsumerConfidenceIndex,
+                CyclePhase = (int)CyclePhase,
+                ActiveResearchPoints = ActiveResearch?.PointsInvested ?? 0.0,
+                ActiveResearchName = ActiveResearch?.Id ?? ""
+            };
+
+            foreach (var node in TechTree)
+            {
+                if (node.IsCompleted)
+                {
+                    data.CompletedResearch.Add(node.Id);
+                }
+            }
+
+            for (int x = 0; x < MapSize; x++)
+            {
+                for (int y = 0; y < MapSize; y++)
+                {
+                    Tile t = Grid[x, y];
+                    if (t.Type != TileType.Grass)
+                    {
+                        data.Tiles.Add(new TileSaveData
+                        {
+                            X = t.X,
+                            Y = t.Y,
+                            Type = (int)t.Type,
+                            Level = t.Level,
+                            Inventory = t.Inventory,
+                            MaxInventory = t.MaxInventory,
+                            MaintenanceCost = t.MaintenanceCost,
+                            LandValue = t.LandValue,
+                            TrafficIndex = t.TrafficIndex,
+                            RetailPrice = t.RetailPrice,
+                            DepreciatedValue = t.DepreciatedValue
+                        });
+                    }
+                }
+            }
+
+            foreach (var emp in Employees)
+            {
+                data.Employees.Add(new EmployeeSaveData
+                {
+                    Id = emp.Id,
+                    Name = emp.Name,
+                    Role = (int)emp.Role,
+                    HourlyWage = emp.HourlyWage,
+                    Morale = emp.Morale,
+                    SkillLevel = emp.SkillLevel,
+                    AssignedX = emp.AssignedX,
+                    AssignedY = emp.AssignedY
+                });
+            }
+
+            string json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(filePath, json);
+        }
+
+        public void LoadFromFile(string filePath)
+        {
+            string json = File.ReadAllText(filePath);
+            var data = JsonSerializer.Deserialize<SaveData>(json);
+            if (data == null) return;
+
+            Stats.CompanyName = data.CompanyName;
+            Stats.Cash = data.Cash;
+            Stats.LoanBalance = data.LoanBalance;
+            Stats.IsIpoLaunched = data.IsIpoLaunched;
+            Stats.PreviousMonthCashflow = data.PreviousMonthCashflow;
+
+            CurrentDate = DateTime.Parse(data.CurrentDate);
+            GDP_Index = data.GDP_Index;
+            Inflation_Rate = data.Inflation_Rate;
+            Unemployment_Rate = data.Unemployment_Rate;
+            Interest_Rate = data.Interest_Rate;
+            ConsumerConfidenceIndex = data.ConsumerConfidenceIndex;
+            CyclePhase = (CyclePhase)data.CyclePhase;
+
+            // Reset tech tree nodes
+            foreach (var node in TechTree)
+            {
+                node.IsCompleted = data.CompletedResearch.Contains(node.Id);
+            }
+            if (!string.IsNullOrEmpty(data.ActiveResearchName))
+            {
+                ActiveResearch = TechTree.FirstOrDefault(n => n.Id == data.ActiveResearchName);
+                if (ActiveResearch != null)
+                {
+                    ActiveResearch.PointsInvested = data.ActiveResearchPoints;
+                }
+            }
+            else
+            {
+                ActiveResearch = null;
+            }
+
+            // Reset grid to grass first
+            for (int x = 0; x < MapSize; x++)
+            {
+                for (int y = 0; y < MapSize; y++)
+                {
+                    Grid[x, y].ResetToGrass();
+                }
+            }
+
+            // Restore buildings
+            foreach (var tData in data.Tiles)
+            {
+                Tile t = Grid[tData.X, tData.Y];
+                t.Type = (TileType)tData.Type;
+                t.Level = tData.Level;
+                t.Inventory = tData.Inventory;
+                t.MaxInventory = tData.MaxInventory;
+                t.MaintenanceCost = tData.MaintenanceCost;
+                t.LandValue = tData.LandValue;
+                t.TrafficIndex = tData.TrafficIndex;
+                t.RetailPrice = tData.RetailPrice;
+                t.DepreciatedValue = tData.DepreciatedValue;
+            }
+
+            // Restore employees
+            Employees.Clear();
+            foreach (var empData in data.Employees)
+            {
+                Employee emp = new Employee((EmployeeRole)empData.Role)
+                {
+                    Id = empData.Id,
+                    Name = empData.Name,
+                    HourlyWage = empData.HourlyWage,
+                    Morale = empData.Morale,
+                    SkillLevel = empData.SkillLevel,
+                    AssignedX = empData.AssignedX,
+                    AssignedY = empData.AssignedY
+                };
+                Employees.Add(emp);
+            }
+
+            UpdateRoadAccess();
+            UpdatePowerGrid();
+            
+            // Recompute initial cached financial properties
+            double totalAssets = 0.0;
+            double totalInventory = 0.0;
+            for (int x = 0; x < MapSize; x++)
+            {
+                for (int y = 0; y < MapSize; y++)
+                {
+                    totalAssets += Grid[x, y].DepreciatedValue;
+                    if (Grid[x, y].Type == TileType.Factory) totalInventory += Grid[x, y].Inventory * 10.0;
+                    else if (Grid[x, y].Type == TileType.Retail) totalInventory += Grid[x, y].Inventory * 20.0;
+                }
+            }
+            Stats.UpdateCachedValues(totalAssets, totalInventory);
         }
     }
 }
