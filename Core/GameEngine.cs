@@ -421,6 +421,32 @@ namespace TycoonGame.Core
             // Resource constraint: Oil Well can only be built on oil deposits
             if (type == TileType.OilWell && !tile.HasOilDeposit) return false;
 
+            // Limit check: Universities and Power Plants have a map limit!
+            if (type == TileType.University)
+            {
+                int uniCount = 0;
+                for (int tx = 0; tx < MapSize; tx++)
+                {
+                    for (int ty = 0; ty < MapSize; ty++)
+                    {
+                        if (Grid[tx, ty].Type == TileType.University) uniCount++;
+                    }
+                }
+                if (uniCount >= 3) return false; // Max 3 Universities on the map
+            }
+            if (type == TileType.PowerPlant)
+            {
+                int ppCount = 0;
+                for (int tx = 0; tx < MapSize; tx++)
+                {
+                    for (int ty = 0; ty < MapSize; ty++)
+                    {
+                        if (Grid[tx, ty].Type == TileType.PowerPlant) ppCount++;
+                    }
+                }
+                if (ppCount >= 5) return false; // Max 5 Power Plants on the map
+            }
+
             double cost = type switch
             {
                 TileType.Road => 1000.0,
@@ -435,9 +461,11 @@ namespace TycoonGame.Core
                 _ => 0
             };
 
-            // Calculate Land Plot purchase cost if not owned
+            // Calculate Land Plot purchase cost if not owned by player (and not a Power Plant / University)
             double landCost = 0.0;
-            if (!tile.IsOwnedByPlayer)
+            bool isMunicipal = (type == TileType.PowerPlant || type == TileType.University);
+            
+            if (!tile.IsOwnedByPlayer && !isMunicipal)
             {
                 landCost = (double)tile.LandValue * 150.0;
             }
@@ -447,7 +475,15 @@ namespace TycoonGame.Core
 
             // Process payments
             Stats.Cash -= totalCost;
-            tile.IsOwnedByPlayer = true; // Land is now owned
+            
+            if (isMunicipal)
+            {
+                tile.IsOwnedByPlayer = false; // Municipal buildings belong to the City
+            }
+            else
+            {
+                tile.IsOwnedByPlayer = true; // Land is now owned
+            }
             tile.SetupBuilding(type);
             
             UpdateRoadAccess();
@@ -462,9 +498,13 @@ namespace TycoonGame.Core
         public bool DemolishStructure(int x, int y)
         {
             if (x < 0 || x >= MapSize || y < 0 || y >= MapSize) return false;
+            Tile tile = Grid[x, y];
+            
+            // Only allow demolishing player-owned structures!
+            if (!tile.IsOwnedByPlayer) return false;
             
             // Cannot bulldoze grass or the highway entrance
-            if (Grid[x, y].Type == TileType.Grass) return false;
+            if (tile.Type == TileType.Grass) return false;
             if (x == EntranceX && y == EntranceY) return false;
 
             double demolishFee = 1000.0;
@@ -480,7 +520,7 @@ namespace TycoonGame.Core
                 employee.AssignedY = -1;
             }
 
-            Grid[x, y].ResetToGrass();
+            tile.ResetToGrass();
 
             // Evict contracts linked to this tile if demolished
             var contractsToRemove = FreightContracts.Where(k => 
@@ -501,6 +541,9 @@ namespace TycoonGame.Core
         {
             if (x < 0 || x >= MapSize || y < 0 || y >= MapSize) return false;
             Tile tile = Grid[x, y];
+            
+            // Only allow upgrading player-owned structures!
+            if (!tile.IsOwnedByPlayer) return false;
             
             if (tile.Type == TileType.Grass || tile.Type == TileType.Road) return false;
             if (tile.Level >= 3) return false; // Maximum level 3
@@ -905,11 +948,16 @@ namespace TycoonGame.Core
                             _ => 17.50
                         };
                         double hourlyWage = baseWage * wageScaleFactor;
-                        totalWages += hourlyWage * tile.EmployeeCount;
-                        totalTrainingCost += tile.TrainingBudgetPerHour;
+                        
+                        double trainingBudget = tile.IsOwnedByPlayer ? tile.TrainingBudgetPerHour : 0.0;
+                        if (tile.IsOwnedByPlayer)
+                        {
+                            totalWages += hourlyWage * tile.EmployeeCount;
+                            totalTrainingCost += tile.TrainingBudgetPerHour;
+                        }
 
                         // Skills training progression
-                        tile.SkillLevel = Math.Clamp(tile.SkillLevel + (tile.TrainingBudgetPerHour / tile.EmployeeCount) * 0.0005, 0.1, 1.0);
+                        tile.SkillLevel = Math.Clamp(tile.SkillLevel + (trainingBudget / tile.EmployeeCount) * 0.0005, 0.1, 1.0);
 
                         // Morale shifts based on utility connections
                         double moraleTarget = 0.8;
@@ -1052,11 +1100,19 @@ namespace TycoonGame.Core
                     Tile tile = Grid[x, y];
                     if (tile.Level == 0) continue;
 
-                    // 1. Add base maintenance upkeep
-                    Stats.CurrentHourBaseMaintenance += tile.MaintenanceCost;
+                    // 1. Add base maintenance upkeep and dynamic Land Tax (ONLY for player-owned tiles)
+                    if (tile.IsOwnedByPlayer)
+                    {
+                        Stats.CurrentHourBaseMaintenance += tile.MaintenanceCost;
+                        Stats.CurrentHourLandTaxes += (double)tile.GetLandTax();
 
-                    // 2. Add dynamic Land Tax based on location value and building tier (using decimal)
-                    Stats.CurrentHourLandTaxes += (double)tile.GetLandTax();
+                        // Electricity Tariff System: Player buys municipal electricity at $1.50 per unit consumed
+                        if (tile.IsPowered)
+                        {
+                            double powerConsumption = tile.GetPowerConsumption();
+                            Stats.CurrentHourBaseMaintenance += powerConsumption * 1.50;
+                        }
+                    }
 
                     if (tile.Type == TileType.Office)
                     {
@@ -1068,7 +1124,10 @@ namespace TycoonGame.Core
                             
                             double earnings = performanceSum * tile.ProductionRate * tile.Level * powerFactor * roadFactor * officeYieldMultiplier;
                             
-                            Stats.CurrentHourOfficeRevenue += earnings;
+                            if (tile.IsOwnedByPlayer)
+                            {
+                                Stats.CurrentHourOfficeRevenue += earnings;
+                            }
                             tile.HistoricalEarnings += earnings;
                             tile.LastDayEarnings += earnings;
                         }
@@ -1090,7 +1149,10 @@ namespace TycoonGame.Core
                             {
                                 // Factory buys raw materials wholesale ($6.00 per unit)
                                 double rawMaterialExpense = actualProduction * 6.00;
-                                Stats.CurrentHourBaseMaintenance += rawMaterialExpense;
+                                if (tile.IsOwnedByPlayer)
+                                {
+                                    Stats.CurrentHourBaseMaintenance += rawMaterialExpense;
+                                }
                                 
                                 tile.Inventory += actualProduction;
                             }
@@ -1125,7 +1187,10 @@ namespace TycoonGame.Core
                         decimal collectedRentDec = tenantsDec * rentRateDec;
                         double collectedRent = (double)collectedRentDec;
 
-                        Stats.CurrentHourApartmentRevenue += collectedRent;
+                        if (tile.IsOwnedByPlayer)
+                        {
+                            Stats.CurrentHourApartmentRevenue += collectedRent;
+                        }
                         tile.HistoricalEarnings += collectedRent;
                         tile.LastDayEarnings += collectedRent;
 
@@ -1139,7 +1204,10 @@ namespace TycoonGame.Core
                         }
                         decimal actualMaintenanceDec = baseMaintenanceDec * recessionScaleDec;
                         
-                        Stats.CurrentHourBaseMaintenance += (double)(actualMaintenanceDec - baseMaintenanceDec);
+                        if (tile.IsOwnedByPlayer)
+                        {
+                            Stats.CurrentHourBaseMaintenance += (double)(actualMaintenanceDec - baseMaintenanceDec);
+                        }
                     }
                     else if (tile.Type == TileType.University)
                     {
@@ -1184,7 +1252,10 @@ namespace TycoonGame.Core
                             double exportQty = Math.Min(tile.Inventory, 10.0 * tile.Level);
                             tile.Inventory -= exportQty;
                             double revenue = exportQty * 18.00;
-                            Stats.CurrentHourRetailRevenue += revenue;
+                            if (tile.IsOwnedByPlayer)
+                            {
+                                Stats.CurrentHourRetailRevenue += revenue;
+                            }
                             tile.HistoricalEarnings += revenue;
                             tile.LastDayEarnings += revenue;
                         }
@@ -1206,7 +1277,10 @@ namespace TycoonGame.Core
                             double exportQty = Math.Min(tile.Inventory, 8.0 * tile.Level);
                             tile.Inventory -= exportQty;
                             double revenue = exportQty * 40.00;
-                            Stats.CurrentHourOfficeRevenue += revenue;
+                            if (tile.IsOwnedByPlayer)
+                            {
+                                Stats.CurrentHourOfficeRevenue += revenue;
+                            }
                             tile.HistoricalEarnings += revenue;
                             tile.LastDayEarnings += revenue;
                         }
@@ -1341,7 +1415,10 @@ namespace TycoonGame.Core
                                 tile.Inventory -= actualSales;
                                 double salesRevenue = actualSales * tile.RetailPrice;
 
-                                Stats.CurrentHourRetailRevenue += salesRevenue;
+                                if (tile.IsOwnedByPlayer)
+                                {
+                                    Stats.CurrentHourRetailRevenue += salesRevenue;
+                                }
                                 tile.HistoricalEarnings += salesRevenue;
                                 tile.LastDayEarnings += salesRevenue;
                             }
@@ -1366,9 +1443,13 @@ namespace TycoonGame.Core
                     Tile tile = Grid[x, y];
                     if (tile.Type == TileType.Office && tile.Level > 0 && tile.EmployeeCount > 0)
                     {
-                        double powerFactor = tile.IsPowered ? 1.0 : 0.2;
-                        // Hired employees in powered offices generate 1.5 base RP/hr each, scaled by performance & brain drain
-                        generatedResearchPoints += tile.EmployeeCount * tile.GetPerformanceMultiplier() * powerFactor * brainDrainMultiplier * 1.5;
+                        // ONLY generate research points from player-owned offices!
+                        if (tile.IsOwnedByPlayer)
+                        {
+                            double powerFactor = tile.IsPowered ? 1.0 : 0.2;
+                            // Hired employees in powered offices generate 1.5 base RP/hr each, scaled by performance & brain drain
+                            generatedResearchPoints += tile.EmployeeCount * tile.GetPerformanceMultiplier() * powerFactor * brainDrainMultiplier * 1.5;
+                        }
                     }
                 }
             }
